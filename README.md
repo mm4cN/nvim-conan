@@ -1,26 +1,23 @@
-# nvim-conan
+# 🌿 nvim-conan
 
-Conan wrapper written in lua. Designed for neovim usage.
-Conan is a C/C++ package manager. For more information please refer to:
+A Lua-crafted bridge between Neovim and Conan, the C/C++ package manager.
 
-![conan](https://img.shields.io/badge/Conan-2.X-blue)
-![neovim](https://img.shields.io/badge/Neovim-0.7+-blueviolet?style=flat&logo=neovim)
-![license](https://img.shields.io/github/license/mmacz/nvim-conan)
+------ 
 
----
+# ✨ Features
 
-## ✨ Features
+Project Initialization: Seamlessly set up your C/C++ projects with Conan integration.
+Neovim Integration: Designed specifically for Neovim users who seek streamlined package management.
+Lua-Powered: Leverages Lua for efficient and elegant scripting within Neovim.
 
-- Init project
+------
 
----
+# ⚙️ Installation
 
-## 📦 Installation
-
-Using [lazy.nvim](https://github.com/folke/lazy.nvim):
+Using lazy.nvim:
 
 ```lua
-{
+return {
   "mmacz/nvim-conan",
   config = function()
     require("conan").setup()
@@ -28,26 +25,38 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
 }
 ```
 
-# ⚙️ Configuration
+------
 
-Default setup
+# 🔧 Configuration
+
+Default setup:
 ```lua
 require("conan").setup({
-  -- options go here
+  -- Add your configuration options here
 })
 ```
+Customize the setup to fit your project's needs.
 
-# 🧱 Requirements
+------
 
-- Neovim >= 0.7
-- Lua support enabled (usually default)
+# 📋 Requirements
+
+Neovim: Version 0.7 or higher
+Lua: Ensure Lua support is enabled in your Neovim setup
+
+------
 
 # 📚 Documentation
 
-- [CHANGELOG.md](CHANGELOG.md)
-- [CONTRIBUTING.md](CONTRIBUTING.md)
+[CHANGELOG.md](CHANGELOG.md): Stay updated with the latest changes.
+[CONTRIBUTING.md](CONTRIBUTING.md): Guidelines for contributing to the project.
 
-# 💖 License
+------
 
-[MIT](https://opensource.org/license/mit)
+# 🛡 License
 
+This project is licensed under the MIT License.
+
+------
+
+*Embrace the harmony of Neovim and Conan, orchestrated through Lua.*
