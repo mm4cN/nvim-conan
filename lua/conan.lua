@@ -1,8 +1,8 @@
 local M = {}
 
-local conan_check_or_install = function()
+local function conan_check_or_install()
   if vim.fn.executable("conan") == 1 then
-    return true
+    return
   end
 
   local py = vim.g.python3_host_prog or "python3"
@@ -10,26 +10,27 @@ local conan_check_or_install = function()
   local pip_available = vim.v.shell_error == 0
 
   if not pip_available then
-    vim.notify("Conan executable is missing and pip is unavailable to install it.\nCheck your Python provider or install manually.", vim.log.levels.ERROR)
+    vim.notify("'conan' executable is missing and pip is unavailable to install it.\nCheck your Python provider or install manually.", vim.log.levels.ERROR)
+    return
   end
 
- local choice = vim.fn.input(string.format("'conan' not found. Install Python package using pip? [y/N]: "))
-
+  local choice = vim.fn.input("'conan' not found. Install with pip? [y/N]: ")
   if choice:lower() ~= "y" then
     vim.notify("'conan' is required but not installed.", vim.log.levels.ERROR)
+    return
   end
 
   vim.fn.system(py .. " -m pip install --user conan")
-
   if vim.v.shell_error == 0 then
-    vim.notify("✅ Installed 'conan' using pip", vim.log.levels.ERROR)
-    return true
-  else
-    vim.notify("Failed to install 'conan' using pip", vim.log.levels.ERROR)
+    vim.notify("✅ Installed 'conan' using pip", vim.log.levels.INFO)
+    return
   end
+
+  vim.notify("❌ Failed to install 'conan' using pip", vim.log.levels.ERROR)
 end
 
 M.setup = function()
+  conan_check_or_install()
   vim.notify("Loaded conan.nvim", vim.log.levels.INFO)
 end
 
