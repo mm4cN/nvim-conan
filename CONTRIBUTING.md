@@ -43,26 +43,3 @@ Or local development:
 }
 ```
 
-# ⚙️ Configuration
-
-Default setup
-```lua
-require("conan").setup({
-  -- options go here
-})
-```
-
-# 🧱 Requirements
-
-- Neovim >= 0.7
-- Lua support enabled (usually default)
-
-# 📚 Documentation
-
-![CHANGELOG.md]()
-![CONTRIBUTING.md]()
-
-# 💖 License
-
-![MIT](https://opensource.org/license/mit)
-
