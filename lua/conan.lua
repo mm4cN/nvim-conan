@@ -29,10 +29,9 @@ local function conan_check_or_install()
   vim.notify("❌ Failed to install 'conan' using pip", vim.log.levels.ERROR)
 end
 
+---Setup the Conan plugin
 M.setup = function()
   conan_check_or_install()
-  vim.notify("Loaded conan.nvim", vim.log.levels.INFO)
 end
 
 return M
-
