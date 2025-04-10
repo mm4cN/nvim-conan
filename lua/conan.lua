@@ -1,6 +1,6 @@
 local M = {}
 
-local cfg_file = ".nvconan"
+local initialized = false
 
 local function conan_check_or_install()
   if vim.fn.executable("conan") == 1 then
@@ -87,6 +87,9 @@ vim.api.nvim_create_user_command("NVConan", NVConanCmd, {
 
 ---Setup the Conan plugin
 M.setup = function()
+  if initialized then
+    return
+  end
   conan_check_or_install()
 end
 
