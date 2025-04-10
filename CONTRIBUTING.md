@@ -1,0 +1,68 @@
+# Contributing to myplugin.nvim
+
+Welcome, curious hacker — thank you for considering a contribution.  
+This project is built with love and Lua, and contributions are deeply appreciated.
+
+Whether you're fixing a bug, adding a feature, improving documentation, or just asking good questions — you're helping.
+Here's how you can get involved.
+
+---
+
+## 🛠️ Getting Started
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/mmacz/conan.nvim
+cd conan.nvim
+```
+
+### 2. Link the Plugin Locally
+
+If you're using Lazy.nvim, point to your local copy:
+
+```lua
+{
+  dir = "~/path/to/conan.nvim",
+  name = "conan",
+  config = function()
+    require("conan").setup()
+  end,
+}
+```
+
+Or local development:
+
+```lua
+{
+  dir = "~/dev/conan.nvim",
+  name = "conan",
+  config = function()
+    require("conan").setup()
+  end
+}
+```
+
+# ⚙️ Configuration
+
+Default setup
+```lua
+require("conan").setup({
+  -- options go here
+})
+```
+
+# 🧱 Requirements
+
+- Neovim >= 0.7
+- Lua support enabled (usually default)
+
+# 📚 Documentation
+
+![CHANGELOG.md]()
+![CONTRIBUTING.md]()
+
+# 💖 License
+
+![MIT](https://opensource.org/license/mit)
+
