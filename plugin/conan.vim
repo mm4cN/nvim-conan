@@ -1,9 +1,12 @@
-if exists("g:loaded_nvim_conan")
+if exists("g:loaded_conan_nvim")
   finish
 endif
-let g:loaded_nvim_conan = 1
+let g:loaded_conan_nvim = 1
 
 lua << EOF
-pcall(require, "conan") and require("conan").setup()
+local ok, mod = pcall(require, "conan")
+if ok and mod then
+  mod.setup()
+end
 EOF
 

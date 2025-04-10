@@ -38,13 +38,13 @@ end
 ---@type table<string, NVConanSubCommand>
 local subcommand_tbl = {
   version = {
-    impl = require("base").version
+    impl = require("commands").version
   },
   install = {
-    impl = require("base").install
+    impl = require("commands").install
   },
   build = {
-    impl = require("base").build
+    impl = require("commands").build
   }
 }
 
