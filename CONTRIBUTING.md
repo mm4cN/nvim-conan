@@ -31,15 +31,3 @@ If you're using Lazy.nvim, point to your local copy:
 }
 ```
 
-Or local development:
-
-```lua
-{
-  dir = "~/dev/nvim-conan",
-  name = "conan",
-  config = function()
-    require("conan").setup()
-  end
-}
-```
-
