@@ -13,8 +13,8 @@ Here's how you can get involved.
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/mmacz/conan.nvim
-cd conan.nvim
+git clone https://github.com/mmacz/nvim-conan
+cd nvim-conan
 ```
 
 ### 2. Link the Plugin Locally
@@ -23,7 +23,7 @@ If you're using Lazy.nvim, point to your local copy:
 
 ```lua
 {
-  dir = "~/path/to/conan.nvim",
+  dir = "~/path/to/nvim-conan",
   name = "conan",
   config = function()
     require("conan").setup()
@@ -35,7 +35,7 @@ Or local development:
 
 ```lua
 {
-  dir = "~/dev/conan.nvim",
+  dir = "~/dev/nvim-conan",
   name = "conan",
   config = function()
     require("conan").setup()
