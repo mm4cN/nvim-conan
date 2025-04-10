@@ -44,8 +44,8 @@ require("conan").setup({
 
 # 📚 Documentation
 
-[CHANGELOG.md](CHANGELOG.md)
-[CONTRIBUTING.md](CONTRIBUTING.md)
+- [CHANGELOG.md](CHANGELOG.md)
+- [CONTRIBUTING.md](CONTRIBUTING.md)
 
 # 💖 License
 
