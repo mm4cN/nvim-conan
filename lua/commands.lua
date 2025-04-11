@@ -37,9 +37,30 @@ M.install = function()
 end
 
 M.build = function()
+  local config = read_config()
+  if config == nil then
+    vim.notify("Couldn't read config", vim.log.levels.ERROR)
+  end
+  local cmd = string.format(
+    "conan build %s -pr:b %s -pr:h %s --build=%s",
+    reference,
+    config.profile_build,
+    config.profile_host,
+    config.opts.build_policy
+  )
+  utils.open_floating_terminal(cmd, "🔨 Conan Build")
 end
 
 M.lock = function()
+  local config = read_config()
+  if config == nil then
+    vim.notify("Couldn't read config", vim.log.levels.ERROR)
+  end
+  local cmd = string.format(
+    "conan lock create %s",
+    reference
+  )
+  utils.open_floating_terminal(cmd, "🔒 Conan Lock")
 end
 
 M.version = function()
