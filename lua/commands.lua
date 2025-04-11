@@ -33,7 +33,7 @@ M.install = function()
     config.profile_host,
     config.opts.build_policy
   )
-  utils.open_floating_terminal(cmd)
+  utils.open_floating_terminal(cmd, "🔧 Conan Install")
 end
 
 M.build = function()

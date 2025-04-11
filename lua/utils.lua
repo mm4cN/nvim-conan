@@ -72,7 +72,9 @@ function M.check_version_compat(config_version, plugin_version)
   end
 end
 
-function M.open_floating_terminal(cmd, on_exit)
+function M.open_floating_terminal(cmd, title)
+  assert(type(cmd) == "string", "cmd must be a string")
+
   local buf = vim.api.nvim_create_buf(false, true)
 
   local width = math.floor(vim.o.columns * 0.8)
@@ -88,23 +90,32 @@ function M.open_floating_terminal(cmd, on_exit)
     col = col,
     style = "minimal",
     border = "rounded",
+    title = title or cmd,
+    title_pos = "center",
   })
 
-  vim.cmd("startinsert")
+  vim.bo[buf].bufhidden = "wipe"
+  vim.bo[buf].filetype = "terminal"
 
-  vim.fn.termopen(cmd, {
+  local job_id = vim.fn.termopen(cmd, {
     on_exit = function(_, code, _)
       vim.schedule(function()
         if code == 0 then
-          vim.api.nvim_win_close(win, true)
-        end
-        if on_exit then
-          on_exit(code)
+          if vim.api.nvim_win_is_valid(win) then
+            vim.api.nvim_win_close(win, true)
+          end
+        else
+          vim.cmd("startinsert")
+          vim.fn.getchar()
+          if vim.api.nvim_win_is_valid(win) then
+            vim.api.nvim_win_close(win, true)
+          end
         end
       end)
     end,
   })
 
+  vim.cmd("startinsert")
   vim.bo[buf].modifiable = false
 end
 
