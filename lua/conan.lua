@@ -1,7 +1,5 @@
 local M = {}
 
-local config_file = require("commands").config_file
-
 local function conan_check_or_install()
   if vim.fn.executable("conan") == 1 then
     return
@@ -104,6 +102,7 @@ vim.api.nvim_create_user_command("Conan", ConanCmd, {
 M.setup = function()
   conan_check_or_install()
 
+  local config_file = require("commands").config_file
   local utils = require("utils")
   local cwd = vim.fn.getcwd()
   local version = require("version")
