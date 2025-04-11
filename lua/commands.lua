@@ -33,7 +33,7 @@ M.install = function()
     config.opts.build_policy
   )
   local utils = require("utils")
-  utils.open_floating_terminal(cmd, "🔧 Conan Install")
+  utils.open_floating_terminal(cmd, "📦 Conan Install")
 end
 
 M.build = function()
