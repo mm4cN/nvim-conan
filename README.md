@@ -43,7 +43,7 @@ Customize the setup to fit your project's needs.
 
 # 📋 Requirements
 
-Neovim: Version 0.7 or higher
+Neovim: Version 0.10 or higher
 
 Lua: Ensure Lua support is enabled in your Neovim setup
 
