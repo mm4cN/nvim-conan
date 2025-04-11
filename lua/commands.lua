@@ -2,7 +2,6 @@ local M = {
   config_file = vim.fn.getcwd() .. "/" .. ".nvim-conan.json"
 }
 
-local utils = require("utils")
 local reference = vim.fn.getcwd() .. "/conanfile.py"
 
 local function read_config()
@@ -33,6 +32,7 @@ M.install = function()
     config.profile_host,
     config.opts.build_policy
   )
+  local utils = require("utils")
   utils.open_floating_terminal(cmd, "🔧 Conan Install")
 end
 
@@ -48,6 +48,7 @@ M.build = function()
     config.profile_host,
     config.opts.build_policy
   )
+  local utils = require("utils")
   utils.open_floating_terminal(cmd, "🔨 Conan Build")
 end
 
@@ -60,6 +61,7 @@ M.lock = function()
     "conan lock create %s",
     reference
   )
+  local utils = require("utils")
   utils.open_floating_terminal(cmd, "🔒 Conan Lock")
 end
 
