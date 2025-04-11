@@ -56,4 +56,20 @@ function M.ensure_config(path, default_table)
   end
 end
 
+function M.get_major_version(version)
+  return tonumber(version:match("^(%d+)")) or 0
+end
+
+function M.check_version_compat(config_version, plugin_version)
+  local config_major = M.get_major_version(config_version)
+  local plugin_major = M.get_major_version(plugin_version)
+
+  if config_major ~= plugin_major then
+    vim.notify(string.format(
+      "⚠️ Config version (%s) might not be compatible with plugin version (%s).\nPlease review your config file.",
+      config_version, plugin_version
+    ), vim.log.levels.INFO)
+  end
+end
+
 return M

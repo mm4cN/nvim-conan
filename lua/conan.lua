@@ -106,16 +106,29 @@ M.setup = function()
 
   local utils = require("utils")
   local cwd = vim.fn.getcwd()
+  local version = require("version")
   if utils.file_exists(cwd .. "/conanfile.py") then
     utils.ensure_config(config_file, {
       name = "nvim-conan",
-      version = "0.1.0",
+      version = version,
       profile_build = "default",
       profile_host = "default",
       opts = {
         build_policy = "missing",
       },
     })
+
+    local _, config = pcall(function()
+      local file = io.open(config_file, "r")
+      if not file then return nil end
+      local content = file:read("*a")
+      file:close()
+      return vim.fn.json_decode(content)
+    end)
+
+    if config ~= nil then
+      utils.check_version_compat(config.version, version)
+    end
   end
 end
 
