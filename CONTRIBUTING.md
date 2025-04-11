@@ -25,9 +25,6 @@ If you're using Lazy.nvim, point to your local copy:
 {
   dir = "~/path/to/nvim-conan",
   name = "conan",
-  config = function()
-    require("conan").setup()
-  end,
 }
 ```
 

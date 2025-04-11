@@ -21,9 +21,6 @@ Using lazy.nvim:
 ```lua
 return {
   "mmacz/nvim-conan",
-  config = function()
-    require("conan").setup()
-  end
 }
 ```
 

@@ -1,6 +1,6 @@
 local M = {}
 
-local initialized = false
+local config_file = require("commands").config_file
 
 local function conan_check_or_install()
   if vim.fn.executable("conan") == 1 then
@@ -31,41 +31,56 @@ local function conan_check_or_install()
   vim.notify("❌ Failed to install 'conan' using pip", vim.log.levels.ERROR)
 end
 
----@class NVConanSubCommand
+---@class ConanSubCommand
 ---@field impl fun(args:string[], opts: table)
 ---@field complete? fun(subcmd_arg_lead: string): string[]
 
----@type table<string, NVConanSubCommand>
+---@type table<string, ConanSubCommand>
 local subcommand_tbl = {
-  version = {
-    impl = require("commands").version
-  },
   install = {
-    impl = require("commands").install
+    impl = require("commands").install,
   },
   build = {
     impl = require("commands").build
+  },
+  lock = {
+    impl = require("commands").lock
+  },
+  version = {
+    impl = require("commands").version
+  },
+  create = {
+    impl = require("commands").create
+  },
+  export = {
+    impl = require("commands").export
+  },
+  export_package = {
+    impl = require("commands").export_package
+  },
+  upload = {
+    impl = require("commands").upload
   }
 }
 
 ---@param opts table :h lua-guide-commands-create
-local function NVConanCmd(opts)
+local function ConanCmd(opts)
     local fargs = opts.fargs
     local subcommand_key = fargs[1]
     local args = #fargs > 1 and vim.list_slice(fargs, 2, #fargs) or {}
     local subcommand = subcommand_tbl[subcommand_key]
     if not subcommand then
-        vim.notify("Rocks: Unknown command: " .. subcommand_key, vim.log.levels.ERROR)
+        vim.notify("Conan: Unknown command: " .. subcommand_key, vim.log.levels.ERROR)
         return
     end
     subcommand.impl(args, opts)
 end
 
-vim.api.nvim_create_user_command("NVConan", NVConanCmd, {
+vim.api.nvim_create_user_command("Conan", ConanCmd, {
     nargs = "+",
     desc = "Conan commands completions",
     complete = function(arg_lead, cmdline, _)
-        local subcmd_key, subcmd_arg_lead = cmdline:match("^['<,'>]*NVConan[!]*%s(%S+)%s(.*)$")
+        local subcmd_key, subcmd_arg_lead = cmdline:match("^['<,'>]*Conan[!]*%s(%S+)%s(.*)$")
         if subcmd_key
             and subcmd_arg_lead
             and subcommand_tbl[subcmd_key]
@@ -73,7 +88,7 @@ vim.api.nvim_create_user_command("NVConan", NVConanCmd, {
         then
             return subcommand_tbl[subcmd_key].complete(subcmd_arg_lead)
         end
-        if cmdline:match("^['<,'>]*NVConan[!]*%s+%w*$") then
+        if cmdline:match("^['<,'>]*Conan[!]*%s+%w*$") then
             local subcommand_keys = vim.tbl_keys(subcommand_tbl)
             return vim.iter(subcommand_keys)
                 :filter(function(key)
@@ -87,10 +102,21 @@ vim.api.nvim_create_user_command("NVConan", NVConanCmd, {
 
 ---Setup the Conan plugin
 M.setup = function()
-  if initialized then
-    return
-  end
   conan_check_or_install()
+
+  local utils = require("utils")
+  local cwd = vim.fn.getcwd()
+  if utils.file_exists(cwd .. "/conanfile.py") then
+    utils.ensure_config(config_file, {
+      name = "nvim-conan",
+      version = "0.1.0",
+      profile_build = "default",
+      profile_host = "default",
+      opts = {
+        build_policy = "missing",
+      },
+    })
+  end
 end
 
 return M
