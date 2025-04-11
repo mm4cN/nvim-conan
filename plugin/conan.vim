@@ -3,10 +3,12 @@ if exists("g:loaded_conan_nvim")
 endif
 let g:loaded_conan_nvim = 1
 
-lua << EOF
-local ok, mod = pcall(require, "conan")
-if ok and mod then
-  mod.setup()
-end
-EOF
+if has("nvim")
+  lua << EOF
+  local ok, mod = pcall(require, "conan")
+  if ok and mod then
+    mod.setup()
+  end
+  EOF
+endif
 
