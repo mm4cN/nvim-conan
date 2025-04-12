@@ -48,6 +48,9 @@ M.build = function()
     config.profile_host,
     config.opts.build_policy
   )
+  if vim.loop.fs_stat(vim.fn.getcwd() .. "/conan.lock") ~= nil then
+    cmd = cmd .. " --lockfile=conan.lock"
+  end
   local utils = require("utils")
   utils.open_floating_terminal(cmd, "🔨 Conan Build")
 end
