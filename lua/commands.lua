@@ -112,6 +112,7 @@ M.export = function(args)
   local config = read_config()
   if config == nil then
     vim.notify("Couldn't read config", vim.log.levels.ERROR)
+    return
   end
 
   local cmd = "conan export"
@@ -129,11 +130,78 @@ M.export = function(args)
   utils.open_floating_terminal(cmd, "Conan Export")
 end
 
-M.export_package = function()
+M.export_package = function(args)
+  local user = args[1]
+  local channel = args[2]
+  local config = read_config()
+
+  if config == nil then
+    vim.notify("Couldn't read config", vim.log.levels.ERROR)
+    return
+  end
+
+  local cmd = "conan export-pkg"
+  if user then
+    cmd = cmd .. string.format(" --user %s", user)
+  end
+
+  if channel then
+    cmd = cmd .. string.format(" --channel %s", channel)
+  end
+
+  cmd = cmd .. " " .. reference
+  local utils = require("utils")
+  utils.open_floating_terminal(cmd, "Conan Export-Package")
 end
 
 M.upload = function()
-  --- upload based on telescope api for package and remote picker
+  local pickers = require("telescope.pickers")
+  local finders = require("telescope.finders")
+  local actions = require("telescope.actions")
+  local action_state = require("telescope.actions.state")
+  local conf = require("telescope.config").values
+  local utils = require("utils")
+
+  local remotes = utils.get_conan_remotes_from_cli()
+  if #remotes == 0 then
+    vim.notify("No remotes found from `conan remote list`.", vim.log.levels.WARN)
+    return
+  end
+
+  pickers.new({}, {
+    prompt_title = "Select Conan Remote",
+    finder = finders.new_table { results = remotes },
+    sorter = conf.generic_sorter({}),
+    attach_mappings = function(prompt_bufnr)
+      actions.select_default:replace(function()
+        actions.close(prompt_bufnr)
+        local remote = action_state.get_selected_entry()[1]
+
+        local refs = utils.get_cached_package_refs()
+        if #refs == 0 then
+          vim.notify("No cached Conan packages found", vim.log.levels.WARN)
+          return
+        end
+
+        pickers.new({}, {
+          prompt_title = "Select Package Ref",
+          finder = finders.new_table { results = refs },
+          sorter = conf.generic_sorter({}),
+          attach_mappings = function(ref_bufnr)
+            actions.select_default:replace(function()
+              actions.close(ref_bufnr)
+              local ref = action_state.get_selected_entry()[1]
+
+              local cmd = string.format("conan upload %s -r=%s --confirm", ref, remote)
+              require("utils").open_floating_terminal(cmd, string.format("📦 Upload: %s → %s", ref, remote))
+            end)
+            return true
+          end,
+        }):find()
+      end)
+      return true
+    end,
+  }):find()
 end
 
 return M

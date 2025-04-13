@@ -123,4 +123,62 @@ function M.open_floating_terminal(cmd, title, close_term)
   vim.bo[buf].modifiable = false
 end
 
+function M.get_conan_remotes_from_cli()
+  local output = vim.fn.systemlist("conan remote list")
+  if vim.v.shell_error ~= 0 then
+    return {}
+  end
+
+  local remotes = {}
+  for _, line in ipairs(output) do
+    local name = line:match("^(.-):%s")
+    if name then
+      table.insert(remotes, name)
+    end
+  end
+  return remotes
+end
+
+function M.get_cached_package_refs()
+  local output_lines = vim.fn.systemlist("conan list --format=json")
+  if vim.v.shell_error ~= 0 then
+    vim.notify("Failed to run `conan list`", vim.log.levels.ERROR)
+    return {}
+  end
+
+  local json_start = nil
+  for i, line in ipairs(output_lines) do
+    if line:match("^%s*{") then
+      json_start = i
+      break
+    end
+  end
+
+  if not json_start then
+    vim.notify("Could not locate JSON in Conan list output", vim.log.levels.ERROR)
+    return {}
+  end
+
+  local json = table.concat(vim.list_slice(output_lines, json_start), "\n")
+  local ok, parsed = pcall(vim.fn.json_decode, json)
+  if not ok or type(parsed) ~= "table" then
+    vim.notify("Failed to parse Conan list JSON block", vim.log.levels.ERROR)
+    return {}
+  end
+
+  local refs = {}
+  local cache = parsed["Local Cache"]
+  if not cache then
+    vim.notify("No 'Local Cache' section found in parsed output", vim.log.levels.WARN)
+    return {}
+  end
+
+  for ref, _ in pairs(cache) do
+    table.insert(refs, ref)
+  end
+
+  table.sort(refs)
+  return refs
+end
+
 return M
