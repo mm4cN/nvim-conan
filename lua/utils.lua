@@ -72,8 +72,12 @@ function M.check_version_compat(config_version, plugin_version)
   end
 end
 
-function M.open_floating_terminal(cmd, title)
+function M.open_floating_terminal(cmd, title, close_term)
   assert(type(cmd) == "string", "cmd must be a string")
+
+  if close_term == nil then
+    close_term = true
+  end
 
   local buf = vim.api.nvim_create_buf(false, true)
 
@@ -91,7 +95,7 @@ function M.open_floating_terminal(cmd, title)
     style = "minimal",
     border = "rounded",
     title = title or cmd,
-    title_pos = "center",
+    title_pos = "left",
   })
 
   vim.bo[buf].bufhidden = "wipe"
@@ -100,7 +104,7 @@ function M.open_floating_terminal(cmd, title)
   local job_id = vim.fn.termopen(cmd, {
     on_exit = function(_, code, _)
       vim.schedule(function()
-        if code == 0 then
+        if (code == 0 and close_term) then
           if vim.api.nvim_win_is_valid(win) then
             vim.api.nvim_win_close(win, true)
           end

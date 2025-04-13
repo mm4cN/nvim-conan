@@ -68,6 +68,23 @@ M.lock = function()
   utils.open_floating_terminal(cmd, "🔒 Conan Lock")
 end
 
+M.search = function(args)
+  local package_name = args[1]
+  local remote = args[2]
+
+  if not package_name then
+    vim.notify("❌ Package name is required for :Conan search", vim.log.levels.ERROR)
+    return
+  end
+
+  local cmd = "conan search " .. package_name
+  if remote then
+    cmd = cmd .. " -r " .. remote
+  end
+  local utils = require("utils")
+  utils.open_floating_terminal(cmd, "Conan Search: " .. package_name, false)
+end
+
 M.version = function()
 end
 
