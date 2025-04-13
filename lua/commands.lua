@@ -85,9 +85,6 @@ M.search = function(args)
   utils.open_floating_terminal(cmd, "Conan Search: " .. package_name, false)
 end
 
-M.version = function()
-end
-
 M.create = function()
   local config = read_config()
   if config == nil then

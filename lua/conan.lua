@@ -47,9 +47,6 @@ local subcommand_tbl = {
   search = {
     impl = require("commands").search
   },
-  version = {
-    impl = require("commands").version
-  },
   create = {
     impl = require("commands").create
   },
