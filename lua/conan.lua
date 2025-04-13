@@ -104,30 +104,67 @@ M.setup = function()
 
   local config_file = require("commands").config_file
   local utils = require("utils")
-  local cwd = vim.fn.getcwd()
   local version = require("version")
-  if utils.file_exists(cwd .. "/conanfile.py") then
-    --- TODO: configuration using telescope api for profile selection and build policy
-    utils.ensure_config(config_file, {
-      name = "nvim-conan",
-      version = version,
-      profile_build = "default",
-      profile_host = "default",
-      build_policy = "missing",
-    })
+  local cwd = vim.fn.getcwd()
 
-    local _, config = pcall(function()
-      local file = io.open(config_file, "r")
+  local config_path = config_file:match("^/") and config_file or (cwd .. "/" .. config_file)
+
+  if not utils.file_exists(cwd .. "/conanfile.py") then
+    return
+  end
+
+  if utils.file_exists(config_path) then
+    local ok, config = pcall(function()
+      local file = io.open(config_path, "r")
       if not file then return nil end
       local content = file:read("*a")
       file:close()
       return vim.fn.json_decode(content)
     end)
 
-    if config ~= nil then
+    if ok and config then
       utils.check_version_compat(config.version, version)
+    else
+      vim.notify("⚠️ Failed to read existing config at " .. config_path, vim.log.levels.WARN)
     end
+
+    return
   end
+
+  vim.schedule(function()
+    utils.pick_conan_profile("Select Host Profile", function(host_profile)
+      utils.pick_conan_profile("Select Build Profile", function(build_profile)
+        utils.pick_build_policy(function(build_policy)
+
+          utils.ensure_config(config_file, {
+            name = "nvim-conan",
+            version = version,
+            profile_build = build_profile,
+            profile_host = host_profile,
+            build_policy = build_policy,
+          })
+
+          vim.notify(string.format(
+            "🎯 Configured with host: %s, build: %s, policy: %s",
+            host_profile, build_profile, build_policy
+          ), vim.log.levels.INFO)
+
+          local ok, config = pcall(function()
+            local file = io.open(config_path, "r")
+            if not file then return nil end
+            local content = file:read("*a")
+            file:close()
+            return vim.fn.json_decode(content)
+          end)
+
+          if ok and config then
+            utils.check_version_compat(config.version, version)
+          end
+        end)
+      end)
+    end)
+  end)
 end
+
 
 return M

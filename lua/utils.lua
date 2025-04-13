@@ -181,4 +181,73 @@ function M.get_cached_package_refs()
   return refs
 end
 
+function M.get_conan_profiles()
+  local lines = vim.fn.systemlist("conan profile list")
+  if vim.v.shell_error ~= 0 then
+    vim.notify("Failed to run `conan profile list`", vim.log.levels.ERROR)
+    return {}
+  end
+
+  local profiles = {}
+  for _, line in ipairs(lines) do
+    if not line:match("Profiles found") and line:match("%S") then
+      table.insert(profiles, vim.trim(line))
+    end
+  end
+
+  return profiles
+end
+
+function M.pick_conan_profile(prompt, callback)
+  local pickers = require("telescope.pickers")
+  local finders = require("telescope.finders")
+  local conf = require("telescope.config").values
+  local actions = require("telescope.actions")
+  local action_state = require("telescope.actions.state")
+
+  local profiles = M.get_conan_profiles()
+  if #profiles == 0 then
+    vim.notify("No Conan profiles found", vim.log.levels.WARN)
+    return
+  end
+
+  pickers.new({}, {
+    prompt_title = prompt,
+    finder = finders.new_table { results = profiles },
+    sorter = conf.generic_sorter({}),
+    attach_mappings = function(bufnr)
+      actions.select_default:replace(function()
+        actions.close(bufnr)
+        local selection = action_state.get_selected_entry()[1]
+        callback(selection)
+      end)
+      return true
+    end,
+  }):find()
+end
+
+function M.pick_build_policy(callback)
+  local pickers = require("telescope.pickers")
+  local finders = require("telescope.finders")
+  local conf = require("telescope.config").values
+  local actions = require("telescope.actions")
+  local action_state = require("telescope.actions.state")
+
+  local options = { "missing", "never", "always" }
+
+  pickers.new({}, {
+    prompt_title = "Select Build Policy",
+    finder = finders.new_table { results = options },
+    sorter = conf.generic_sorter({}),
+    attach_mappings = function(bufnr)
+      actions.select_default:replace(function()
+        actions.close(bufnr)
+        local selection = action_state.get_selected_entry()[1]
+        callback(selection)
+      end)
+      return true
+    end,
+  }):find()
+end
+
 return M
