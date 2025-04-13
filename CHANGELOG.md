@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 - Placeholder for upcoming changes. Watch this space.
 
-## [1.0.0] - 2025-04-12
+## [1.0.0] - 2025-04-14
 ### Added
 - `:Conan install` — installs dependencies using the default profile.
 - `:Conan build` — builds the project using Conan profiles.
