@@ -110,14 +110,13 @@ M.setup = function()
   local cwd = vim.fn.getcwd()
   local version = require("version")
   if utils.file_exists(cwd .. "/conanfile.py") then
+    --- TODO: configuration using telescope api for profile selection and build policy
     utils.ensure_config(config_file, {
       name = "nvim-conan",
       version = version,
       profile_build = "default",
       profile_host = "default",
-      opts = {
-        build_policy = "missing",
-      },
+      build_policy = "missing",
     })
 
     local _, config = pcall(function()
