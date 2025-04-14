@@ -308,5 +308,5 @@ function M.get_compile_commands_path()
   end
 end
 
-
 return M
+
