@@ -53,6 +53,16 @@ M.build = function()
   end
   local utils = require("utils")
   utils.open_floating_terminal(cmd, "🔨 Conan Build")
+
+  local compile_commands = require("utils").get_compile_commands_path()
+  if compile_commands then
+    local target = vim.fn.getcwd() .. "/compile_commands.json"
+    os.execute(
+      string.format(
+        "ln -sf %s %s", compile_commands, target
+      ))
+    vim.notify("🔗 Linked compile_commands.json to project root", vim.log.levels.INFO)
+  end
 end
 
 M.lock = function()

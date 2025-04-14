@@ -250,4 +250,63 @@ function M.pick_build_policy(callback)
   }):find()
 end
 
+function M.get_compile_commands_path()
+  local config_file = require("commands").config_file
+  local cwd = vim.fn.getcwd()
+
+  local file = io.open(config_file, "r")
+  if not file then
+    vim.notify("Could not read config file: " .. config_file, vim.log.levels.ERROR)
+    return nil
+  end
+
+  local content = file:read("*a")
+  file:close()
+
+  local config = vim.fn.json_decode(content)
+  local profile = config and config.profile_build
+  if not profile then
+    vim.notify("Missing 'profile_build' in config", vim.log.levels.ERROR)
+    return nil
+  end
+
+  local lines = vim.fn.systemlist("conan profile show -pr:h " .. profile)
+  if vim.v.shell_error ~= 0 then
+    vim.notify("Failed to get profile: " .. profile, vim.log.levels.ERROR)
+    return nil
+  end
+
+  local in_host_settings = false
+  local build_type = nil
+
+  for _, line in ipairs(lines) do
+    if line:match("^Host profile:") then
+      in_host_settings = false
+    elseif line:match("^%[settings%]") and not in_host_settings then
+      in_host_settings = true
+    elseif in_host_settings and line:match("^%[.*%]") then
+      break
+    elseif in_host_settings then
+      local key, val = line:match("^(.-)=(.+)$")
+      if key and key:match("build_type") then
+        build_type = vim.trim(val)
+        break
+      end
+    end
+  end
+
+  if not build_type then
+    vim.notify("Could not find 'build_type' in host profile: " .. profile, vim.log.levels.WARN)
+    return nil
+  end
+
+  local path = string.format("%s/build/%s/compile_commands.json", cwd, build_type)
+  if vim.loop.fs_stat(path) then
+    return path
+  else
+    return nil
+  end
+end
+
+
 return M
