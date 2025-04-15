@@ -58,6 +58,9 @@ local subcommand_tbl = {
   },
   upload = {
     impl = require("commands").upload
+  },
+  reconfigure = {
+    impl = require("utils").reconfigure
   }
 }
 
@@ -132,39 +135,8 @@ M.setup = function()
   end
 
   vim.schedule(function()
-    utils.pick_conan_profile("Select Host Profile", function(host_profile)
-      utils.pick_conan_profile("Select Build Profile", function(build_profile)
-        utils.pick_build_policy(function(build_policy)
-
-          utils.ensure_config(config_file, {
-            name = "nvim-conan",
-            version = version,
-            profile_build = build_profile,
-            profile_host = host_profile,
-            build_policy = build_policy,
-          })
-
-          vim.notify(string.format(
-            "🎯 Configured with host: %s, build: %s, policy: %s",
-            host_profile, build_profile, build_policy
-          ), vim.log.levels.INFO)
-
-          local ok, config = pcall(function()
-            local file = io.open(config_path, "r")
-            if not file then return nil end
-            local content = file:read("*a")
-            file:close()
-            return vim.fn.json_decode(content)
-          end)
-
-          if ok and config then
-            utils.check_version_compat(config.version, version)
-          end
-        end)
-      end)
-    end)
+    require("utils").reconfigure()
   end)
 end
-
 
 return M

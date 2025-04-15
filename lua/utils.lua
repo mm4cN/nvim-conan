@@ -308,5 +308,49 @@ function M.get_compile_commands_path()
   end
 end
 
+function M.reconfigure()
+  local config_file = require("commands").config_file
+  local version = require("version")
+  local cwd = vim.fn.getcwd()
+  local config_path = config_file:match("^/") and config_file or (cwd .. "/" .. config_file)
+
+  if M.file_exists(config_path) then
+    vim.loop.fs_unlink(config_path)
+    vim.notify("✅ Removed old config", vim.log.levels.INFO)
+  end
+
+  M.pick_conan_profile("Select Host Profile", function(host_profile)
+    M.pick_conan_profile("Select Build Profile", function(build_profile)
+      M.pick_build_policy(function(build_policy)
+
+        M.ensure_config(config_file, {
+          name = "nvim-conan",
+          version = version,
+          profile_build = build_profile,
+          profile_host = host_profile,
+          build_policy = build_policy,
+        })
+
+        vim.notify(string.format(
+          "🎯 Configured with host: %s, build: %s, policy: %s",
+          host_profile, build_profile, build_policy
+        ), vim.log.levels.INFO)
+
+        local ok, config = pcall(function()
+          local file = io.open(config_path, "r")
+          if not file then return nil end
+          local content = file:read("*a")
+          file:close()
+          return vim.fn.json_decode(content)
+        end)
+
+        if ok and config then
+          M.check_version_compat(config.version, version)
+        end
+      end)
+    end)
+  end)
+end
+
 return M
 
