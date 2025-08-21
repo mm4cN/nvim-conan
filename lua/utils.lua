@@ -113,6 +113,21 @@ function M.open_floating_terminal(cmd, title, close_term)
 
   vim.bo[buf].bufhidden = "wipe"
   vim.bo[buf].filetype = "terminal"
+  vim.bo[buf].readonly = true
+  vim.bo[buf].buftype = "nofile"
+
+  vim.api.nvim_create_autocmd("TermEnter", {
+    buffer = buf,
+    callback = function()
+      vim.cmd("stopinsert")
+    end,
+  })
+  vim.api.nvim_create_autocmd("InsertEnter", {
+    buffer = buf,
+    callback = function()
+      vim.cmd("stopinsert")
+    end,
+  })
 
   local job_id = vim.fn.termopen(cmd, {
     on_exit = function(_, code, _)
