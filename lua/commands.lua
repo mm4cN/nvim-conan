@@ -33,7 +33,7 @@ M.install = function()
     config.build_policy
   )
   local utils = require("utils")
-  utils.open_floating_terminal(cmd, "📦 Conan Install")
+  utils.open_floating_terminal(cmd, "📦 " .. cmd)
 end
 
 M.build = function()
@@ -52,7 +52,7 @@ M.build = function()
     cmd = cmd .. " --lockfile=conan.lock"
   end
   local utils = require("utils")
-  utils.open_floating_terminal(cmd, "🔨 Conan Build")
+  utils.open_floating_terminal(cmd, "🔨 " .. cmd)
 
   local compile_commands = require("utils").get_compile_commands_path()
   if compile_commands then
@@ -75,7 +75,7 @@ M.lock = function()
     reference
   )
   local utils = require("utils")
-  utils.open_floating_terminal(cmd, "🔒 Conan Lock")
+  utils.open_floating_terminal(cmd, "🔒 " .. cmd)
 end
 
 M.search = function(args)
@@ -134,7 +134,7 @@ M.export = function(args)
   cmd = cmd .. " " .. reference
 
   local utils = require("utils")
-  utils.open_floating_terminal(cmd, "Conan Export")
+  utils.open_floating_terminal(cmd)
 end
 
 M.export_package = function(args)
@@ -158,7 +158,7 @@ M.export_package = function(args)
 
   cmd = cmd .. " " .. reference
   local utils = require("utils")
-  utils.open_floating_terminal(cmd, "Conan Export-Package")
+  utils.open_floating_terminal(cmd)
 end
 
 M.upload = function()
