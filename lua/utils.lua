@@ -108,18 +108,11 @@ function M.open_floating_terminal(cmd, title, close_term)
           if vim.api.nvim_win_is_valid(win) then
             vim.api.nvim_win_close(win, true)
           end
-        else
-          vim.cmd("startinsert")
-          vim.fn.getchar()
-          if vim.api.nvim_win_is_valid(win) then
-            vim.api.nvim_win_close(win, true)
-          end
         end
       end)
     end,
   })
 
-  vim.cmd("startinsert")
   vim.bo[buf].modifiable = false
 end
 
