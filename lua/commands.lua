@@ -33,7 +33,7 @@ M.install = function()
     config.build_policy
   )
   local utils = require("utils")
-  utils.open_floating_terminal(cmd, "📦 " .. cmd)
+  utils.open_floating_terminal(cmd, "📦 Conan Install")
 end
 
 M.build = function()
@@ -41,18 +41,27 @@ M.build = function()
   if config == nil then
     vim.notify("Couldn't read config", vim.log.levels.ERROR)
   end
+
+  local options_str = ""
+  if config.options then
+    for k,v in pairs(config.options) do
+      options_str = options_str .. string.format("-o %s=%s ", k, v)
+    end
+  end
+
   local cmd = string.format(
-    "conan build %s -pr:b %s -pr:h %s --build=%s",
+    "conan build %s -pr:b %s -pr:h %s --build=%s %s",
     reference,
     config.profile_build,
     config.profile_host,
-    config.build_policy
+    config.build_policy,
+    options_str
   )
   if vim.loop.fs_stat(vim.fn.getcwd() .. "/conan.lock") ~= nil then
     cmd = cmd .. " --lockfile=conan.lock"
   end
   local utils = require("utils")
-  utils.open_floating_terminal(cmd, "🔨 " .. cmd)
+  utils.open_floating_terminal(cmd, "🔨 Conan Build")
 
   local compile_commands = require("utils").get_compile_commands_path()
   if compile_commands then

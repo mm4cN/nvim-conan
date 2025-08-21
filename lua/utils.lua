@@ -31,6 +31,19 @@ function M.encode_json(tbl, indent)
       val = string.format("%q", v)
     elseif type(v) == "number" or type(v) == "boolean" then
       val = tostring(v)
+    elseif type(v) == "table" and k == "options" then
+      local opts_lines = {"{"}
+      local oi, on = 0, 0
+      for _ in pairs(v) do on = on + 1 end
+      for ok, ov in pairs(v) do
+        oi = oi + 1
+        local opt_key = string.format('"%s"', tostring(ok))
+        local opt_val = type(ov) == "number" or type(ov) == "boolean" and tostring(ov) or string.format("%q", tostring(ov))
+        local opt_comma = (oi < on) and "," or ""
+        table.insert(opts_lines, string.format('%s  %s: %s%s', indent_str, opt_key, opt_val, opt_comma))
+      end
+      table.insert(opts_lines, indent_str .. "}")
+      val = table.concat(opts_lines, "\n")
     elseif type(v) == "table" then
       val = vim.fn.json_encode(v)
     else
@@ -301,6 +314,28 @@ function M.get_compile_commands_path()
   end
 end
 
+local function prompt_for_options(callback)
+  local options = {}
+  local function prompt()
+    vim.ui.input({
+      prompt = "Enter options (key=value), enter with blank field to finish: "},
+      function(input)
+        if input and input ~= "" then
+          local k, v = input:match("^%s*(.-)%s*=%s*(.-)%s*$")
+          if k and v and k ~= "" and v ~= "" then
+            options[k] = v
+          else
+            vim.notify("Invalid input. Use key=value format.", vim.log.levels.WARN)
+          end
+          prompt()
+        else
+          callback(options)
+        end
+      end)
+  end
+  prompt()
+end
+
 function M.reconfigure()
   local config_file = require("commands").config_file
   local version = require("version")
@@ -315,31 +350,34 @@ function M.reconfigure()
   M.pick_conan_profile("Select Host Profile", function(host_profile)
     M.pick_conan_profile("Select Build Profile", function(build_profile)
       M.pick_build_policy(function(build_policy)
+        prompt_for_options(function(options)
 
-        M.ensure_config(config_file, {
-          name = "nvim-conan",
-          version = version,
-          profile_build = build_profile,
-          profile_host = host_profile,
-          build_policy = build_policy,
-        })
+          M.ensure_config(config_file, {
+            version = version,
+            profile_build = build_profile,
+            profile_host = host_profile,
+            build_policy = build_policy,
+            options = options or {},
+          })
 
-        vim.notify(string.format(
-          "🎯 Configured with host: %s, build: %s, policy: %s",
-          host_profile, build_profile, build_policy
-        ), vim.log.levels.INFO)
+          vim.notify(string.format(
+            "🎯 Configured with host: %s, build: %s, policy: %s",
+            host_profile, build_profile, build_policy
+          ), vim.log.levels.INFO)
 
-        local ok, config = pcall(function()
-          local file = io.open(config_path, "r")
-          if not file then return nil end
-          local content = file:read("*a")
-          file:close()
-          return vim.fn.json_decode(content)
+          local ok, config = pcall(function()
+            local file = io.open(config_path, "r")
+            if not file then return nil end
+            local content = file:read("*a")
+            file:close()
+            return vim.fn.json_decode(content)
+          end)
+
+          if ok and config then
+            M.check_version_compat(config.version, version)
+          end
+
         end)
-
-        if ok and config then
-          M.check_version_compat(config.version, version)
-        end
       end)
     end)
   end)
