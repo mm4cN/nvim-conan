@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 - Placeholder for upcoming changes. Watch this space.
 
+## [1.2.0] - 2025-08-21
+### Added
+- Floating terminal supports additional options.
+- Floating terminal shows the executed command as its window title.
+
+### Changed
+- Floating terminal is now read-only and cannot be edited.
+- Terminal window will not close on keypress if the command fails.
+
+### Other
+- Bumped version.
+- Version 1.1.0 was skipped due to a mistake in the versioning process.
+
 ## [1.0.0] - 2025-04-14
 ### Added
 - `:Conan install` — installs dependencies using the default profile.
