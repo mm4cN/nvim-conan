@@ -129,6 +129,13 @@ function M.open_floating_terminal(cmd, title, close_term)
     end,
   })
 
+  local function scroll_to_bottom()
+    if vim.api.nvim_win_is_valid(win) and vim.api.nvim_buf_is_valid(buf) then
+      local line_count = vim.api.nvim_buf_line_count(buf)
+      vim.api.nvim_win_set_cursor(win, { line_count, 0 })
+    end
+  end
+
   local job_id = vim.fn.termopen(cmd, {
     on_exit = function(_, code, _)
       vim.schedule(function()
@@ -138,6 +145,12 @@ function M.open_floating_terminal(cmd, title, close_term)
           end
         end
       end)
+    end,
+    on_stdout = function()
+      vim.schedule(scroll_to_bottom)
+    end,
+    on_stderr = function()
+      vim.schedule(scroll_to_bottom)
     end,
   })
 
