@@ -12,7 +12,7 @@ Whether you're fixing a bug, adding a feature, improving documentation, or just 
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/mmacz/nvim-conan
+git clone https://github.com/mm4cN/nvim-conan
 cd nvim-conan
 ```
 

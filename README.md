@@ -34,7 +34,7 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
 
 ```lua
 return {
-  "mmacz/nvim-conan",
+  "mm4cN/nvim-conan",
   dependencies = {
     "nvim-telescope/telescope.nvim",
   },
