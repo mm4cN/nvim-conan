@@ -112,7 +112,7 @@ M.setup = function()
 
   local config_path = config_file:match("^/") and config_file or (cwd .. "/" .. config_file)
 
-  if not utils.file_exists(cwd .. "/conanfile.py") then
+  if vim.fn.empty(vim.fn.glob(cwd .. "/conanfile*.py")) == 1 then
     return
   end
 

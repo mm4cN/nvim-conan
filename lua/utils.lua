@@ -284,6 +284,30 @@ function M.pick_build_policy(callback)
   }):find()
 end
 
+function M.pick_recipe(prompt, callback)
+  local pickers = require("telescope.pickers")
+  local finders = require("telescope.finders")
+  local conf = require("telescope.config").values
+  local actions = require("telescope.actions")
+  local action_state = require("telescope.actions.state")
+
+  local recipes = vim.fn.glob(vim.fn.getcwd() .. "/conanfile*.py", false, true)
+
+  pickers.new({}, {
+    prompt_title = prompt,
+    finder = finders.new_table { results = recipes },
+    sorter = conf.generic_sorter({}),
+    attach_mappings = function(bufnr)
+      actions.select_default:replace(function()
+        actions.close(bufnr)
+        local selection = action_state.get_selected_entry()[1]
+        callback(selection)
+      end)
+      return true
+    end,
+  }):find()
+end
+
 function M.get_compile_commands_path()
   local config_file = require("commands").config_file
   local cwd = vim.fn.getcwd()
@@ -375,40 +399,43 @@ function M.reconfigure()
     vim.notify("✅ Removed old config", vim.log.levels.INFO)
   end
 
-  M.pick_conan_profile("Select Host Profile", function(host_profile)
-    M.pick_conan_profile("Select Build Profile", function(build_profile)
-      M.pick_build_policy(function(build_policy)
-        prompt_for_options(function(options)
+  M.pick_recipe("Select Conan Recipe", function(recipe)
+    M.pick_conan_profile("Select Host Profile", function(host_profile)
+      M.pick_conan_profile("Select Build Profile", function(build_profile)
+        M.pick_build_policy(function(build_policy)
+          prompt_for_options(function(options)
 
-          M.ensure_config(config_file, {
-            version = version,
-            profile_build = build_profile,
-            profile_host = host_profile,
-            build_policy = build_policy,
-            options = options or {},
-          })
+            M.ensure_config(config_file, {
+              recipe = recipe,
+              version = version,
+              profile_build = build_profile,
+              profile_host = host_profile,
+              build_policy = build_policy,
+              options = options or {},
+            })
 
-          vim.notify(string.format(
-            "🎯 Configured with host: %s, build: %s, policy: %s",
-            host_profile, build_profile, build_policy
-          ), vim.log.levels.INFO)
+            vim.notify(string.format(
+              "🎯 Configured with host: %s, build: %s, policy: %s",
+              host_profile, build_profile, build_policy
+            ), vim.log.levels.INFO)
 
-          local ok, config = pcall(function()
-            local file = io.open(config_path, "r")
-            if not file then return nil end
-            local content = file:read("*a")
-            file:close()
-            return vim.fn.json_decode(content)
-          end)
+            local ok, config = pcall(function()
+              local file = io.open(config_path, "r")
+              if not file then return nil end
+              local content = file:read("*a")
+              file:close()
+              return vim.fn.json_decode(content)
+            end)
 
-          if ok and config then
-            M.check_version_compat(config.version, version)
-          end
+            if ok and config then
+              M.check_version_compat(config.version, version)
+            end
+          end) -- end prompt for options
+        end) -- end pick build policy
+      end) -- end pick build profile
+    end) -- end pick host profile
+  end) -- end pick recipe
 
-        end)
-      end)
-    end)
-  end)
 end
 
 return M

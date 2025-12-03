@@ -2,8 +2,6 @@ local M = {
   config_file = vim.fn.getcwd() .. "/" .. ".nvim-conan.json"
 }
 
-local reference = vim.fn.getcwd() .. "/conanfile.py"
-
 local function read_config()
   local ok, config = pcall(function()
     local file = io.open(M.config_file, "r")
@@ -27,7 +25,7 @@ M.install = function()
   end
   local cmd = string.format(
     "conan install %s -pr:b %s -pr:h %s --build=%s",
-    reference,
+    config.recipe,
     config.profile_build,
     config.profile_host,
     config.build_policy
@@ -51,7 +49,7 @@ M.build = function()
 
   local cmd = string.format(
     "conan build %s -pr:b %s -pr:h %s --build=%s %s",
-    reference,
+    config.recipe,
     config.profile_build,
     config.profile_host,
     config.build_policy,
@@ -81,7 +79,7 @@ M.lock = function()
   end
   local cmd = string.format(
     "conan lock create %s",
-    reference
+    config.recipe
   )
   local utils = require("utils")
   utils.open_floating_terminal(cmd, "🔒 " .. cmd)
@@ -115,7 +113,7 @@ M.create = function()
     config.profile_build,
     config.profile_host,
     config.build_policy,
-    reference
+    config.recipe
   )
   local utils = require("utils")
   utils.open_floating_terminal(cmd)
@@ -140,7 +138,7 @@ M.export = function(args)
   if channel then
     cmd = cmd .. " --channel " .. channel
   end
-  cmd = cmd .. " " .. reference
+  cmd = cmd .. " " .. config.recipe
 
   local utils = require("utils")
   utils.open_floating_terminal(cmd)
@@ -165,7 +163,7 @@ M.export_package = function(args)
     cmd = cmd .. string.format(" --channel %s", channel)
   end
 
-  cmd = cmd .. " " .. reference
+  cmd = cmd .. " " .. config.recipe
   local utils = require("utils")
   utils.open_floating_terminal(cmd)
 end
