@@ -25,7 +25,7 @@ M.install = function()
   end
   local cmd = string.format(
     "conan install %s -pr:b %s -pr:h %s --build=%s",
-    config.recipe,
+    config.recipe or ".",
     config.profile_build,
     config.profile_host,
     config.build_policy
@@ -49,7 +49,7 @@ M.build = function()
 
   local cmd = string.format(
     "conan build %s -pr:b %s -pr:h %s --build=%s %s",
-    config.recipe,
+    config.recipe or ".",
     config.profile_build,
     config.profile_host,
     config.build_policy,
@@ -79,7 +79,7 @@ M.lock = function()
   end
   local cmd = string.format(
     "conan lock create %s",
-    config.recipe
+    config.recipe or "."
   )
   local utils = require("utils")
   utils.open_floating_terminal(cmd, "🔒 " .. cmd)
@@ -113,7 +113,7 @@ M.create = function()
     config.profile_build,
     config.profile_host,
     config.build_policy,
-    config.recipe
+    config.recipe or "."
   )
   local utils = require("utils")
   utils.open_floating_terminal(cmd)
@@ -138,7 +138,7 @@ M.export = function(args)
   if channel then
     cmd = cmd .. " --channel " .. channel
   end
-  cmd = cmd .. " " .. config.recipe
+  cmd = cmd .. " " .. (config.recipe or ".")
 
   local utils = require("utils")
   utils.open_floating_terminal(cmd)
@@ -163,7 +163,7 @@ M.export_package = function(args)
     cmd = cmd .. string.format(" --channel %s", channel)
   end
 
-  cmd = cmd .. " " .. config.recipe
+  cmd = cmd .. " " .. (config.recipe or ".")
   local utils = require("utils")
   utils.open_floating_terminal(cmd)
 end
