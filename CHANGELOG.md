@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 - Placeholder for upcoming changes. Watch this space.
 
+## [1.4.0] - 2026-02-21
+### Added: support for conf specification which might be useful to skip tests
+
+## [1.3.1] - 2025-12-04
+### Fixed: backwards compatibility issue
+
+## [1.3.0] - 2025-
+### Added: support for recipe selection
+
 ## [1.2.0] - 2025-08-21
 ### Added
 - Floating terminal supports additional options.

@@ -136,7 +136,7 @@ function M.open_floating_terminal(cmd, title, close_term)
     end
   end
 
-  local job_id = vim.fn.termopen(cmd, {
+  local _ = vim.fn.termopen(cmd, { -- job_id
     on_exit = function(_, code, _)
       vim.schedule(function()
         if (code == 0 and close_term) then
@@ -366,11 +366,11 @@ function M.get_compile_commands_path()
   end
 end
 
-local function prompt_for_options(callback)
+local function prompt_for(what, callback)
   local options = {}
   local function prompt()
     vim.ui.input({
-      prompt = "Enter options (key=value), enter with blank field to finish: "},
+      prompt = "Enter " .. what .. " (key=value), enter with blank field to finish: "},
       function(input)
         if input and input ~= "" then
           local k, v = input:match("^%s*(.-)%s*=%s*(.-)%s*$")
@@ -403,33 +403,35 @@ function M.reconfigure()
     M.pick_conan_profile("Select Host Profile", function(host_profile)
       M.pick_conan_profile("Select Build Profile", function(build_profile)
         M.pick_build_policy(function(build_policy)
-          prompt_for_options(function(options)
+          prompt_for("options",function(options)
+            prompt_for("conf", function(conf)
+              M.ensure_config(config_file, {
+                recipe = recipe,
+                version = version,
+                profile_build = build_profile,
+                profile_host = host_profile,
+                build_policy = build_policy,
+                options = options or {},
+                conf = conf or {},
+              })
 
-            M.ensure_config(config_file, {
-              recipe = recipe,
-              version = version,
-              profile_build = build_profile,
-              profile_host = host_profile,
-              build_policy = build_policy,
-              options = options or {},
-            })
+              vim.notify(string.format(
+                "🎯 Configured with host: %s, build: %s, policy: %s",
+                host_profile, build_profile, build_policy
+              ), vim.log.levels.INFO)
 
-            vim.notify(string.format(
-              "🎯 Configured with host: %s, build: %s, policy: %s",
-              host_profile, build_profile, build_policy
-            ), vim.log.levels.INFO)
+              local ok, config = pcall(function()
+                local file = io.open(config_path, "r")
+                if not file then return nil end
+                local content = file:read("*a")
+                file:close()
+                return vim.fn.json_decode(content)
+              end)
 
-            local ok, config = pcall(function()
-              local file = io.open(config_path, "r")
-              if not file then return nil end
-              local content = file:read("*a")
-              file:close()
-              return vim.fn.json_decode(content)
-            end)
-
-            if ok and config then
-              M.check_version_compat(config.version, version)
-            end
+              if ok and config then
+                M.check_version_compat(config.version, version)
+              end
+            end) -- end prompt for conf
           end) -- end prompt for options
         end) -- end pick build policy
       end) -- end pick build profile

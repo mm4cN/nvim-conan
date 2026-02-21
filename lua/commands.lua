@@ -47,13 +47,21 @@ M.build = function()
     end
   end
 
+  local conf_str = ""
+  if config.conf then
+    for k,v in pairs(config.conf) do
+      conf_str = conf_str .. string.format("-c %s=%s ", k, v)
+    end
+  end
+
   local cmd = string.format(
-    "conan build %s -pr:b %s -pr:h %s --build=%s %s",
+    "conan build %s -pr:b %s -pr:h %s --build=%s %s %s",
     config.recipe or ".",
     config.profile_build,
     config.profile_host,
     config.build_policy,
-    options_str
+    options_str,
+    conf_str
   )
   if vim.loop.fs_stat(vim.fn.getcwd() .. "/conan.lock") ~= nil then
     cmd = cmd .. " --lockfile=conan.lock"
