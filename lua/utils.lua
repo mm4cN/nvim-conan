@@ -19,7 +19,7 @@ end
 function M.encode_json(tbl, indent)
   indent = indent or 0
   local indent_str = string.rep("  ", indent + 1)
-  local lines = {"{"}
+  local lines = { "{" }
   local i, n = 0, 0
   for _ in pairs(tbl) do n = n + 1 end
 
@@ -32,13 +32,14 @@ function M.encode_json(tbl, indent)
     elseif type(v) == "number" or type(v) == "boolean" then
       val = tostring(v)
     elseif type(v) == "table" and k == "options" then
-      local opts_lines = {"{"}
+      local opts_lines = { "{" }
       local oi, on = 0, 0
       for _ in pairs(v) do on = on + 1 end
       for ok, ov in pairs(v) do
         oi = oi + 1
         local opt_key = string.format('"%s"', tostring(ok))
-        local opt_val = type(ov) == "number" or type(ov) == "boolean" and tostring(ov) or string.format("%q", tostring(ov))
+        local opt_val = type(ov) == "number" or type(ov) == "boolean" and tostring(ov) or
+            string.format("%q", tostring(ov))
         local opt_comma = (oi < on) and "," or ""
         table.insert(opts_lines, string.format('%s  %s: %s%s', indent_str, opt_key, opt_val, opt_comma))
       end
@@ -85,12 +86,13 @@ function M.check_version_compat(config_version, plugin_version)
   end
 end
 
-function M.open_floating_terminal(cmd, title, close_term)
+function M.open_floating_terminal(cmd, title, close_term, opts)
   assert(type(cmd) == "string", "cmd must be a string")
 
   if close_term == nil then
     close_term = true
   end
+  opts = opts or {}
 
   local buf = vim.api.nvim_create_buf(false, true)
 
@@ -136,9 +138,13 @@ function M.open_floating_terminal(cmd, title, close_term)
     end
   end
 
-  local _ = vim.fn.termopen(cmd, { -- job_id
+  local _ = vim.fn.termopen(cmd, {
     on_exit = function(_, code, _)
       vim.schedule(function()
+        if type(opts.on_exit) == "function" then
+          pcall(opts.on_exit, code, { win = win, buf = buf, cmd = cmd, title = title })
+        end
+
         if (code == 0 and close_term) then
           if vim.api.nvim_win_is_valid(win) then
             vim.api.nvim_win_close(win, true)
@@ -370,7 +376,7 @@ local function prompt_for(what, callback)
   local options = {}
   local function prompt()
     vim.ui.input({
-      prompt = "Enter " .. what .. " (key=value), enter with blank field to finish: "},
+        prompt = "Enter " .. what .. " (key=value), enter with blank field to finish: " },
       function(input)
         if input and input ~= "" then
           local k, v = input:match("^%s*(.-)%s*=%s*(.-)%s*$")
@@ -403,7 +409,7 @@ function M.reconfigure()
     M.pick_conan_profile("Select Host Profile", function(host_profile)
       M.pick_conan_profile("Select Build Profile", function(build_profile)
         M.pick_build_policy(function(build_policy)
-          prompt_for("options",function(options)
+          prompt_for("options", function(options)
             prompt_for("conf", function(conf)
               M.ensure_config(config_file, {
                 recipe = recipe,
@@ -432,13 +438,11 @@ function M.reconfigure()
                 M.check_version_compat(config.version, version)
               end
             end) -- end prompt for conf
-          end) -- end prompt for options
-        end) -- end pick build policy
-      end) -- end pick build profile
-    end) -- end pick host profile
-  end) -- end pick recipe
-
+          end)   -- end prompt for options
+        end)     -- end pick build policy
+      end)       -- end pick build profile
+    end)         -- end pick host profile
+  end)           -- end pick recipe
 end
 
 return M
-

@@ -1,5 +1,17 @@
+--- nvim-conan main module.
+--- Provides user-facing commands for Conan workflows inside Neovim:
+--- install/build/lock/create/export/export-pkg/search/upload.
+---
+--- This module integrates:
+--- - floating terminal runner (utils.open_floating_terminal)
+--- - lualine status via conan_status (spinner + text)
+--- - Telescope UI for `conan search` results
+---
+--- Requirements:
+--- - `utils.open_floating_terminal(cmd, title, close_term, opts)` supports `opts.on_exit(code, ctx?)`
+--- - `conan_status.start(text)` accepts optional text and renders it in statusline
 local M = {
-  config_file = vim.fn.getcwd() .. "/" .. ".nvim-conan.json",
+  ---@private
   _search_started = false,
 }
 
@@ -9,144 +21,227 @@ local conf = require("telescope.config").values
 local previewers = require("telescope.previewers")
 local actions = require("telescope.actions")
 local action_state = require("telescope.actions.state")
+
 local conan_status = require("conan_status")
 
-local TERMINAL_STATUS_MS = 900
-local function status_start(text)
-  if conan_status.start then
-    conan_status.start(text)
-  else
-    vim.g.conan_busy_text = text or "Conan"
-    conan_status.start()
-  end
+--- Returns absolute path to the per-project config file.
+--- The path is based on the current working directory (respects `:cd`).
+---@return string
+local function config_path()
+  return vim.fn.getcwd() .. "/.nvim-conan.json"
 end
 
-local function status_stop()
-  if conan_status.stop then
-    conan_status.stop()
-  end
-end
-
-local function with_status(text, fn, stop_after_ms)
-  status_start(text)
-  local ok, err = pcall(fn)
-  if not ok then
-    status_stop()
-    vim.notify(err, vim.log.levels.ERROR)
-    return
-  end
-
-  if stop_after_ms and stop_after_ms > 0 then
-    vim.defer_fn(function()
-      status_stop()
-    end, stop_after_ms)
-  end
-end
-
+--- Reads and decodes `.nvim-conan.json` from current working directory.
+--- Returns nil on any error (missing file / invalid JSON / IO error).
+---@return table|nil
 local function read_config()
   local ok, config = pcall(function()
-    local file = io.open(M.config_file, "r")
+    local file = io.open(config_path(), "r")
     if not file then
       return nil
     end
     local content = file:read("*a")
     file:close()
-    return vim.fn.json_decode(content)
+    return vim.json.decode(content)
   end)
+
   if not ok or config == nil then
     return nil
   end
   return config
 end
 
-M.install = function()
-  with_status("📦 Conan: install", function()
-    local config = read_config()
-    if config == nil then
-      vim.notify("Couldn't read config", vim.log.levels.ERROR)
-      return
-    end
+--- Runs a shell command in a floating terminal and shows a busy spinner in statusline.
+--- Spinner stops when the terminal job exits (success or failure).
+---
+--- This is the preferred runner for long-running Conan commands (install/build/etc.).
+---@param text string Statusline text to show while the command runs.
+---@param cmd string Shell command executed in the floating terminal.
+---@param title string Floating window title.
+---@param close_term boolean If true, closes terminal window automatically on exit code 0.
+local function run_terminal_with_status(text, cmd, title, close_term)
+  local utils = require("utils")
+  conan_status.start(text)
 
-    local cmd = string.format(
-      "conan install %s -pr:b %s -pr:h %s --build=%s",
-      config.recipe or ".",
-      config.profile_build,
-      config.profile_host,
-      config.build_policy
-    )
-
-    require("utils").open_floating_terminal(cmd, "📦 Conan Install")
-  end, TERMINAL_STATUS_MS)
-end
-
-M.build = function()
-  with_status("🔨 Conan: build", function()
-    local config = read_config()
-    if config == nil then
-      vim.notify("Couldn't read config", vim.log.levels.ERROR)
-      return
-    end
-
-    local options_str = ""
-    if config.options then
-      for k, v in pairs(config.options) do
-        options_str = options_str .. string.format("-o %s=%s ", k, v)
+  utils.open_floating_terminal(cmd, title, close_term, {
+    ---@param code integer
+    on_exit = function(code)
+      conan_status.stop()
+      if code ~= 0 then
+        vim.notify(("Conan command failed (exit %d)"):format(code), vim.log.levels.ERROR)
       end
-    end
-
-    local conf_str = ""
-    if config.conf then
-      for k, v in pairs(config.conf) do
-        conf_str = conf_str .. string.format("-c %s=%s ", k, v)
-      end
-    end
-
-    local cmd = string.format(
-      "conan build %s -pr:b %s -pr:h %s --build=%s %s %s",
-      config.recipe or ".",
-      config.profile_build,
-      config.profile_host,
-      config.build_policy,
-      options_str,
-      conf_str
-    )
-
-    if vim.loop.fs_stat(vim.fn.getcwd() .. "/conan.lock") ~= nil then
-      cmd = cmd .. " --lockfile=conan.lock"
-    end
-
-    require("utils").open_floating_terminal(cmd, "🔨 Conan Build")
-
-    local compile_commands = require("utils").get_compile_commands_path()
-    if compile_commands then
-      local target = vim.fn.getcwd() .. "/compile_commands.json"
-      os.execute(string.format("ln -sf %s %s", compile_commands, target))
-      vim.notify("🔗 Linked compile_commands.json to project root", vim.log.levels.INFO)
-    end
-  end, TERMINAL_STATUS_MS)
+    end,
+  })
 end
 
-M.lock = function()
-  with_status("🔒 Conan: lock", function()
-    local config = read_config()
-    if config == nil then
-      vim.notify("Couldn't read config", vim.log.levels.ERROR)
-      return
-    end
+-- -------------------------
+-- Conan commands (terminal)
+-- -------------------------
 
-    local cmd = string.format("conan lock create %s", config.recipe or ".")
-    require("utils").open_floating_terminal(cmd, "🔒 Conan Lock")
-  end, TERMINAL_STATUS_MS)
+--- Runs `conan install` using config from `.nvim-conan.json`.
+--- Opens a floating terminal and shows statusline spinner until the command finishes.
+function M.install()
+  local config = read_config()
+  if config == nil then
+    vim.notify("Couldn't read config", vim.log.levels.ERROR)
+    return
+  end
+
+  local cmd = string.format(
+    "conan install %s -pr:b %s -pr:h %s --build=%s",
+    config.recipe or ".",
+    config.profile_build,
+    config.profile_host,
+    config.build_policy
+  )
+
+  run_terminal_with_status("📦 Conan: install", cmd, "📦 Conan Install", true)
 end
 
+--- Runs `conan build` using config from `.nvim-conan.json`.
+--- Also attempts to symlink `compile_commands.json` into project root if it can be located.
+function M.build()
+  local config = read_config()
+  if config == nil then
+    vim.notify("Couldn't read config", vim.log.levels.ERROR)
+    return
+  end
+
+  local options_str = ""
+  if config.options then
+    for k, v in pairs(config.options) do
+      options_str = options_str .. string.format("-o %s=%s ", k, v)
+    end
+  end
+
+  local conf_str = ""
+  if config.conf then
+    for k, v in pairs(config.conf) do
+      conf_str = conf_str .. string.format("-c %s=%s ", k, v)
+    end
+  end
+
+  local cmd = string.format(
+    "conan build %s -pr:b %s -pr:h %s --build=%s %s %s",
+    config.recipe or ".",
+    config.profile_build,
+    config.profile_host,
+    config.build_policy,
+    options_str,
+    conf_str
+  )
+
+  if vim.loop.fs_stat(vim.fn.getcwd() .. "/conan.lock") ~= nil then
+    cmd = cmd .. " --lockfile=conan.lock"
+  end
+
+  run_terminal_with_status("🔨 Conan: build", cmd, "🔨 Conan Build", true)
+
+  -- Best-effort symlink for tooling (clangd, etc.)
+  local utils = require("utils")
+  local compile_commands = utils.get_compile_commands_path()
+  if compile_commands then
+    local target = vim.fn.getcwd() .. "/compile_commands.json"
+    vim.system({ "ln", "-sf", compile_commands, target }, { text = true }, function(res)
+      vim.schedule(function()
+        if res.code == 0 then
+          vim.notify("🔗 Linked compile_commands.json to project root", vim.log.levels.INFO)
+        else
+          vim.notify(res.stderr or "Failed to link compile_commands.json", vim.log.levels.WARN)
+        end
+      end)
+    end)
+  end
+end
+
+--- Runs `conan lock create` using config from `.nvim-conan.json`.
+function M.lock()
+  local config = read_config()
+  if config == nil then
+    vim.notify("Couldn't read config", vim.log.levels.ERROR)
+    return
+  end
+
+  local cmd = string.format("conan lock create %s", config.recipe or ".")
+  run_terminal_with_status("🔒 Conan: lock", cmd, "🔒 Conan Lock", true)
+end
+
+--- Runs `conan create` using config from `.nvim-conan.json`.
+function M.create()
+  local config = read_config()
+  if config == nil then
+    vim.notify("Couldn't read config", vim.log.levels.ERROR)
+    return
+  end
+
+  local cmd = string.format(
+    "conan create -pr:b %s -pr:h %s --build=%s %s",
+    config.profile_build,
+    config.profile_host,
+    config.build_policy,
+    config.recipe or "."
+  )
+
+  run_terminal_with_status("📦 Conan: create", cmd, "📦 Conan Create", true)
+end
+
+--- Runs `conan export` for the current recipe.
+---@param args string[] CLI-like args: {user?, channel?}
+function M.export(args)
+  local user = args[1]
+  local channel = args[2]
+
+  local config = read_config()
+  if config == nil then
+    vim.notify("Couldn't read config", vim.log.levels.ERROR)
+    return
+  end
+
+  local cmd = "conan export"
+  if user then cmd = cmd .. " --user " .. user end
+  if channel then cmd = cmd .. " --channel " .. channel end
+  cmd = cmd .. " " .. (config.recipe or ".")
+
+  run_terminal_with_status("📤 Conan: export", cmd, "📤 Conan Export", true)
+end
+
+--- Runs `conan export-pkg` for the current recipe.
+---@param args string[] CLI-like args: {user?, channel?}
+function M.export_package(args)
+  local user = args[1]
+  local channel = args[2]
+  local config = read_config()
+
+  if config == nil then
+    vim.notify("Couldn't read config", vim.log.levels.ERROR)
+    return
+  end
+
+  local cmd = "conan export-pkg"
+  if user then cmd = cmd .. string.format(" --user %s", user) end
+  if channel then cmd = cmd .. string.format(" --channel %s", channel) end
+  cmd = cmd .. " " .. (config.recipe or ".")
+
+  run_terminal_with_status("📦 Conan: export-pkg", cmd, "📦 Conan Export-Pkg", true)
+end
+
+-- -------------------------
+-- Search (async + Telescope)
+-- -------------------------
+
+--- Asynchronously runs `conan search <pattern>` and returns decoded JSON results.
+--- Uses a guard to prevent multiple concurrent searches.
+---@param pattern string Search pattern (e.g. "huffman" or "pkg/*").
+---@param remote string Remote name or "*" to search across remotes.
+---@param on_finished fun(results: table) Callback invoked with decoded JSON results.
 local function search_async(pattern, remote, on_finished)
   if M._search_started then
     vim.notify("A search is already in progress. Please wait.", vim.log.levels.WARN)
     return
   end
+
   M._search_started = true
-  vim.g.conan_busy_text = "Conan: " .. pattern
-  conan_status.start()
+  conan_status.start("🔍 Conan: search " .. pattern)
 
   vim.system(
     { "conan", "search", pattern, "-r=" .. remote, "-f=json", "-v=quiet" },
@@ -155,21 +250,36 @@ local function search_async(pattern, remote, on_finished)
       vim.schedule(function()
         conan_status.stop()
         M._search_started = false
+
+        if res.code ~= 0 then
+          vim.notify(res.stderr or "Conan search failed", vim.log.levels.ERROR)
+          return
+        end
+
         local ok, decoded = pcall(vim.json.decode, res.stdout)
         if not ok then
           vim.notify("JSON decode failed", vim.log.levels.ERROR)
           return
         end
+
         on_finished(decoded)
       end)
     end
   )
 end
 
+--- Builds a reverse index from Conan search JSON:
+--- - list of refs
+--- - mapping ref -> remotes that contain it
+--- - list of remotes
+--- - mapping remote -> error string (if remote reported error)
+---@param results table
+---@return string[] refs
+---@return table by_ref
+---@return string[] all_remotes
+---@return table remote_errors
 local function build_index(results)
-  local all_remotes = {}
-  local by_ref = {}
-  local remote_errors = {}
+  local all_remotes, by_ref, remote_errors = {}, {}, {}
 
   for remote, payload in pairs(results or {}) do
     table.insert(all_remotes, remote)
@@ -195,6 +305,11 @@ local function build_index(results)
   return refs, by_ref, all_remotes, remote_errors
 end
 
+--- Opens Telescope picker for search results:
+--- - left pane: package refs
+--- - preview: remotes availability + per-remote errors
+---@param pattern string
+---@param results table
 local function open_search_picker(pattern, results)
   local refs, by_ref, all_remotes, remote_errors = build_index(results)
 
@@ -229,13 +344,10 @@ local function open_search_picker(pattern, results)
         local present = by_ref[ref] or {}
         local cnt = 0
         for _ in pairs(present) do cnt = cnt + 1 end
-
-        local display = string.format("%-30s  (%d)", ref, cnt)
-
         return {
           value = ref,
           ordinal = ref,
-          display = display,
+          display = string.format("%-30s  (%d)", ref, cnt),
           present = present,
         }
       end,
@@ -297,17 +409,15 @@ local function open_search_picker(pattern, results)
   }):find()
 end
 
-M.search = function(args)
+--- Entry point for `:Conan search <pattern> [remote]`
+---@param args string[]
+function M.search(args)
   local pattern = args[1]
-  local remote = args[2]
+  local remote = args[2] or "*"
 
   if not pattern then
     vim.notify("❌ Package name is required for :Conan search", vim.log.levels.ERROR)
     return
-  end
-
-  if remote == nil then
-    remote = "*"
   end
 
   search_async(pattern, remote, function(results)
@@ -315,110 +425,61 @@ M.search = function(args)
   end)
 end
 
-M.create = function()
-  with_status("📦 Conan: create", function()
-    local config = read_config()
-    if config == nil then
-      vim.notify("Couldn't read config", vim.log.levels.ERROR)
-      return
-    end
+-- -------------------------
+-- Upload (status only on run)
+-- -------------------------
 
-    local cmd = string.format(
-      "conan create -pr:b %s -pr:h %s --build=%s %s",
-      config.profile_build,
-      config.profile_host,
-      config.build_policy,
-      config.recipe or "."
-    )
-    require("utils").open_floating_terminal(cmd, "📦 Conan Create")
-  end, TERMINAL_STATUS_MS)
-end
+--- Opens a Telescope flow: choose remote -> choose cached ref -> run `conan upload`.
+--- Statusline spinner starts only when upload command actually runs.
+function M.upload()
+  local utils = require("utils")
 
-M.export = function(args)
-  with_status("📤 Conan: export", function()
-    local user = args[1]
-    local channel = args[2]
+  local remotes = utils.get_conan_remotes_from_cli()
+  if #remotes == 0 then
+    vim.notify("No remotes found from `conan remote list`.", vim.log.levels.WARN)
+    return
+  end
 
-    local config = read_config()
-    if config == nil then
-      vim.notify("Couldn't read config", vim.log.levels.ERROR)
-      return
-    end
+  pickers.new({}, {
+    prompt_title = "Select Conan Remote",
+    finder = finders.new_table { results = remotes },
+    sorter = conf.generic_sorter({}),
+    attach_mappings = function(prompt_bufnr)
+      actions.select_default:replace(function()
+        actions.close(prompt_bufnr)
+        local remote = action_state.get_selected_entry()[1]
 
-    local cmd = "conan export"
-    if user then cmd = cmd .. " --user " .. user end
-    if channel then cmd = cmd .. " --channel " .. channel end
-    cmd = cmd .. " " .. (config.recipe or ".")
+        local refs = utils.get_cached_package_refs()
+        if #refs == 0 then
+          vim.notify("No cached Conan packages found", vim.log.levels.WARN)
+          return
+        end
 
-    require("utils").open_floating_terminal(cmd, "📤 Conan Export")
-  end, TERMINAL_STATUS_MS)
-end
+        pickers.new({}, {
+          prompt_title = "Select Package Ref",
+          finder = finders.new_table { results = refs },
+          sorter = conf.generic_sorter({}),
+          attach_mappings = function(ref_bufnr)
+            actions.select_default:replace(function()
+              actions.close(ref_bufnr)
+              local ref = action_state.get_selected_entry()[1]
 
-M.export_package = function(args)
-  with_status("📦 Conan: export-pkg", function()
-    local user = args[1]
-    local channel = args[2]
-    local config = read_config()
+              local cmd = string.format("conan upload %s -r=%s --confirm", ref, remote)
 
-    if config == nil then
-      vim.notify("Couldn't read config", vim.log.levels.ERROR)
-      return
-    end
-
-    local cmd = "conan export-pkg"
-    if user then cmd = cmd .. string.format(" --user %s", user) end
-    if channel then cmd = cmd .. string.format(" --channel %s", channel) end
-    cmd = cmd .. " " .. (config.recipe or ".")
-
-    require("utils").open_floating_terminal(cmd, "📦 Conan Export-Pkg")
-  end, TERMINAL_STATUS_MS)
-end
-
-M.upload = function()
-  with_status("📤 Conan: upload", function()
-    local utils = require("utils")
-
-    local remotes = utils.get_conan_remotes_from_cli()
-    if #remotes == 0 then
-      vim.notify("No remotes found from `conan remote list`.", vim.log.levels.WARN)
-      return
-    end
-
-    pickers.new({}, {
-      prompt_title = "Select Conan Remote",
-      finder = finders.new_table { results = remotes },
-      sorter = conf.generic_sorter({}),
-      attach_mappings = function(prompt_bufnr)
-        actions.select_default:replace(function()
-          actions.close(prompt_bufnr)
-          local remote = action_state.get_selected_entry()[1]
-
-          local refs = utils.get_cached_package_refs()
-          if #refs == 0 then
-            vim.notify("No cached Conan packages found", vim.log.levels.WARN)
-            return
-          end
-
-          pickers.new({}, {
-            prompt_title = "Select Package Ref",
-            finder = finders.new_table { results = refs },
-            sorter = conf.generic_sorter({}),
-            attach_mappings = function(ref_bufnr)
-              actions.select_default:replace(function()
-                actions.close(ref_bufnr)
-                local ref = action_state.get_selected_entry()[1]
-
-                local cmd = string.format("conan upload %s -r=%s --confirm", ref, remote)
-                require("utils").open_floating_terminal(cmd, string.format("📦 Upload: %s → %s", ref, remote))
-              end)
-              return true
-            end,
-          }):find()
-        end)
-        return true
-      end,
-    }):find()
-  end, TERMINAL_STATUS_MS)
+              run_terminal_with_status(
+                ("📤 Conan: upload %s → %s"):format(ref, remote),
+                cmd,
+                string.format("📦 Upload: %s → %s", ref, remote),
+                true
+              )
+            end)
+            return true
+          end,
+        }):find()
+      end)
+      return true
+    end,
+  }):find()
 end
 
 return M
