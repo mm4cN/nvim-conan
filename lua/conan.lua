@@ -102,19 +102,39 @@ vim.api.nvim_create_user_command("Conan", ConanCmd, {
 })
 
 ---Setup the Conan plugin
+---Setup the Conan plugin
 M.setup = function()
   conan_check_or_install()
 
-  local config_file = require("commands").config_file
+  local ok_cmd, commands = pcall(require, "commands")
+  if not ok_cmd then
+    vim.notify("Conan: failed to load commands module", vim.log.levels.ERROR)
+    return
+  end
+
   local utils = require("utils")
   local version = require("version")
   local cwd = vim.fn.getcwd()
 
-  local config_path = config_file:match("^/") and config_file or (cwd .. "/" .. config_file)
-
-  if vim.fn.empty(vim.fn.glob(cwd .. "/conanfile*.py")) == 1 then
+  -- Detect Conan recipe in CWD (py OR txt)
+  local has_py = vim.fn.empty(vim.fn.glob(cwd .. "/conanfile*.py")) == 0
+  local has_txt = vim.fn.empty(vim.fn.glob(cwd .. "/conanfile*.txt")) == 0
+  if not (has_py or has_txt) then
     return
   end
+
+  -- Resolve config file path (be defensive)
+  local config_file = nil
+  if type(commands.config_path) == "function" then
+    config_file = commands.config_path()
+  end
+
+  -- Fallback if commands.config_path() is missing or returned nil/empty
+  if type(config_file) ~= "string" or config_file == "" then
+    config_file = ".nvim-conan.json"
+  end
+
+  local config_path = config_file:match("^/") and config_file or (cwd .. "/" .. config_file)
 
   if utils.file_exists(config_path) then
     local ok, config = pcall(function()
@@ -122,10 +142,11 @@ M.setup = function()
       if not file then return nil end
       local content = file:read("*a")
       file:close()
-      return vim.fn.json_decode(content)
+      return vim.json.decode(content)
     end)
 
     if ok and config then
+      -- guard: config.version may be missing
       utils.check_version_compat(config.version, version)
     else
       vim.notify("⚠️ Failed to read existing config at " .. config_path, vim.log.levels.WARN)
@@ -135,7 +156,7 @@ M.setup = function()
   end
 
   vim.schedule(function()
-    require("utils").reconfigure()
+    utils.reconfigure()
   end)
 end
 

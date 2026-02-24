@@ -4,6 +4,11 @@ function M.file_exists(path)
   return vim.loop.fs_stat(path) ~= nil
 end
 
+local function conan_config_abspath()
+  local cwd = vim.fn.getcwd()
+  return cwd .. "/.nvim-conan.json"
+end
+
 function M.write_json_file(path, tbl)
   local file = io.open(path, "w")
   if not file then
@@ -314,62 +319,39 @@ function M.pick_recipe(prompt, callback)
   }):find()
 end
 
-function M.get_compile_commands_path()
-  local config_file = require("commands").config_file
+function M.find_latest_compile_commands()
   local cwd = vim.fn.getcwd()
-
-  local file = io.open(config_file, "r")
-  if not file then
-    vim.notify("Could not read config file: " .. config_file, vim.log.levels.ERROR)
+  local files = vim.fn.glob(cwd .. "/**/compile_commands.json", true, true)
+  if type(files) ~= "table" or #files == 0 then
     return nil
   end
 
-  local content = file:read("*a")
-  file:close()
-
-  local config = vim.fn.json_decode(content)
-  local profile = config and config.profile_build
-  if not profile then
-    vim.notify("Missing 'profile_build' in config", vim.log.levels.ERROR)
-    return nil
-  end
-
-  local lines = vim.fn.systemlist("conan profile show -pr:h " .. profile)
-  if vim.v.shell_error ~= 0 then
-    vim.notify("Failed to get profile: " .. profile, vim.log.levels.ERROR)
-    return nil
-  end
-
-  local in_host_settings = false
-  local build_type = nil
-
-  for _, line in ipairs(lines) do
-    if line:match("^Host profile:") then
-      in_host_settings = false
-    elseif line:match("^%[settings%]") and not in_host_settings then
-      in_host_settings = true
-    elseif in_host_settings and line:match("^%[.*%]") then
-      break
-    elseif in_host_settings then
-      local key, val = line:match("^(.-)=(.+)$")
-      if key and key:match("build_type") then
-        build_type = vim.trim(val)
-        break
-      end
+  local newest, newest_mtime = nil, -1
+  for _, p in ipairs(files) do
+    local st = vim.loop.fs_stat(p)
+    if st and st.mtime and st.mtime.sec and st.mtime.sec > newest_mtime then
+      newest = p
+      newest_mtime = st.mtime.sec
     end
   end
+  return newest
+end
 
-  if not build_type then
-    vim.notify("Could not find 'build_type' in host profile: " .. profile, vim.log.levels.WARN)
-    return nil
-  end
+function M.link_compile_commands(path)
+  if type(path) ~= "string" or path == "" then return end
 
-  local path = string.format("%s/build/%s/compile_commands.json", cwd, build_type)
-  if vim.loop.fs_stat(path) then
-    return path
-  else
-    return nil
-  end
+  local cwd = vim.fn.getcwd()
+  local target = cwd .. "/compile_commands.json"
+
+  vim.system({ "ln", "-sf", path, target }, { text = true }, function(res)
+    vim.schedule(function()
+      if res.code == 0 then
+        vim.notify("🔗 Linked compile_commands.json", vim.log.levels.INFO)
+      else
+        vim.notify(res.stderr or "Failed to link compile_commands.json", vim.log.levels.WARN)
+      end
+    end)
+  end)
 end
 
 local function prompt_for(what, callback)
@@ -395,10 +377,9 @@ local function prompt_for(what, callback)
 end
 
 function M.reconfigure()
-  local config_file = require("commands").config_file
   local version = require("version")
   local cwd = vim.fn.getcwd()
-  local config_path = config_file:match("^/") and config_file or (cwd .. "/" .. config_file)
+  local config_path = cwd .. "/.nvim-conan.json"
 
   if M.file_exists(config_path) then
     vim.loop.fs_unlink(config_path)
@@ -410,15 +391,15 @@ function M.reconfigure()
       M.pick_conan_profile("Select Build Profile", function(build_profile)
         M.pick_build_policy(function(build_policy)
           prompt_for("options", function(options)
-            prompt_for("conf", function(conf)
-              M.ensure_config(config_file, {
+            prompt_for("conf", function(conf_tbl)
+              M.ensure_config(config_path, {
                 recipe = recipe,
                 version = version,
                 profile_build = build_profile,
                 profile_host = host_profile,
                 build_policy = build_policy,
                 options = options or {},
-                conf = conf or {},
+                conf = conf_tbl or {},
               })
 
               vim.notify(string.format(
@@ -431,18 +412,20 @@ function M.reconfigure()
                 if not file then return nil end
                 local content = file:read("*a")
                 file:close()
-                return vim.fn.json_decode(content)
+                return vim.json.decode(content)
               end)
 
               if ok and config then
                 M.check_version_compat(config.version, version)
+              else
+                vim.notify("⚠️ Failed to read config after reconfigure", vim.log.levels.WARN)
               end
-            end) -- end prompt for conf
-          end)   -- end prompt for options
-        end)     -- end pick build policy
-      end)       -- end pick build profile
-    end)         -- end pick host profile
-  end)           -- end pick recipe
+            end)
+          end)
+        end)
+      end)
+    end)
+  end)
 end
 
 return M

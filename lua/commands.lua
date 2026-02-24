@@ -59,14 +59,18 @@ end
 ---@param cmd string Shell command executed in the floating terminal.
 ---@param title string Floating window title.
 ---@param close_term boolean If true, closes terminal window automatically on exit code 0.
-local function run_terminal_with_status(text, cmd, title, close_term)
+local function run_terminal_with_status(text, cmd, title, close_term, on_exit)
   local utils = require("utils")
   conan_status.start(text)
 
   utils.open_floating_terminal(cmd, title, close_term, {
-    ---@param code integer
     on_exit = function(code)
       conan_status.stop()
+
+      if type(on_exit) == "function" then
+        pcall(on_exit, code)
+      end
+
       if code ~= 0 then
         vim.notify(("Conan command failed (exit %d)"):format(code), vim.log.levels.ERROR)
       end
@@ -135,23 +139,20 @@ function M.build()
     cmd = cmd .. " --lockfile=conan.lock"
   end
 
-  run_terminal_with_status("🔨 Conan: build", cmd, "🔨 Conan Build", true)
+  run_terminal_with_status(
+    "🔨 Conan: build",
+    cmd,
+    "🔨 Conan Build",
+    true,
+    function(code)
+      if code ~= 0 then return end
 
-  -- Best-effort symlink for tooling (clangd, etc.)
-  local utils = require("utils")
-  local compile_commands = utils.get_compile_commands_path()
-  if compile_commands then
-    local target = vim.fn.getcwd() .. "/compile_commands.json"
-    vim.system({ "ln", "-sf", compile_commands, target }, { text = true }, function(res)
-      vim.schedule(function()
-        if res.code == 0 then
-          vim.notify("🔗 Linked compile_commands.json to project root", vim.log.levels.INFO)
-        else
-          vim.notify(res.stderr or "Failed to link compile_commands.json", vim.log.levels.WARN)
-        end
-      end)
-    end)
-  end
+      local cc = require("utils").find_latest_compile_commands()
+      if cc then
+        require("utils").link_compile_commands(cc)
+      end
+    end
+  )
 end
 
 --- Runs `conan lock create` using config from `.nvim-conan.json`.
