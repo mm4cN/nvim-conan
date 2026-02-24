@@ -36,7 +36,7 @@ function M.encode_json(tbl, indent)
       val = string.format("%q", v)
     elseif type(v) == "number" or type(v) == "boolean" then
       val = tostring(v)
-    elseif type(v) == "table" and k == "options" then
+    elseif type(v) == "table" and (k == "options" or k == "conf") then
       local opts_lines = { "{" }
       local oi, on = 0, 0
       for _ in pairs(v) do on = on + 1 end
@@ -52,8 +52,6 @@ function M.encode_json(tbl, indent)
       val = table.concat(opts_lines, "\n")
     elseif type(v) == "table" then
       val = vim.fn.json_encode(v)
-    else
-      val = "null"
     end
 
     local comma = (i < n) and "," or ""
@@ -378,8 +376,7 @@ end
 
 function M.reconfigure()
   local version = require("version")
-  local cwd = vim.fn.getcwd()
-  local config_path = cwd .. "/.nvim-conan.json"
+  local config_path = conan_config_abspath()
 
   if M.file_exists(config_path) then
     vim.loop.fs_unlink(config_path)
@@ -391,7 +388,7 @@ function M.reconfigure()
       M.pick_conan_profile("Select Build Profile", function(build_profile)
         M.pick_build_policy(function(build_policy)
           prompt_for("options", function(options)
-            prompt_for("conf", function(conf_tbl)
+            prompt_for("conf", function(conf)
               M.ensure_config(config_path, {
                 recipe = recipe,
                 version = version,
@@ -399,7 +396,7 @@ function M.reconfigure()
                 profile_host = host_profile,
                 build_policy = build_policy,
                 options = options or {},
-                conf = conf_tbl or {},
+                conf = conf or {},
               })
 
               vim.notify(string.format(
