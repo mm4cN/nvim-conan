@@ -114,14 +114,14 @@ function M.build()
   local options_str = ""
   if config.options then
     for k, v in pairs(config.options) do
-      options_str = options_str .. string.format("-o %s=%s ", k, v)
+      options_str = options_str .. string.format("-o \"%s=%s\" ", k, v)
     end
   end
 
   local conf_str = ""
   if config.conf then
     for k, v in pairs(config.conf) do
-      conf_str = conf_str .. string.format("-c %s=%s ", k, v)
+      conf_str = conf_str .. string.format("-c \"%s=%s\" ", k, v)
     end
   end
 
