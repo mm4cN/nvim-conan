@@ -92,78 +92,53 @@ end
 function M.open_floating_terminal(cmd, title, close_term, opts)
   assert(type(cmd) == "string", "cmd must be a string")
 
+  opts = opts or {}
+
   if close_term == nil then
     close_term = true
   end
-  opts = opts or {}
 
-  local buf = vim.api.nvim_create_buf(false, true)
+  local width = math.floor(vim.o.columns * 0.35)
 
-  local width = math.floor(vim.o.columns * 0.8)
-  local height = math.floor(vim.o.lines * 0.6)
-  local row = math.floor((vim.o.lines - height) / 2)
-  local col = math.floor((vim.o.columns - width) / 2)
+  local function open_right_panel()
+    vim.cmd("botright vsplit")
 
-  local win = vim.api.nvim_open_win(buf, true, {
-    relative = "editor",
-    width = width,
-    height = height,
-    row = row,
-    col = col,
-    style = "minimal",
-    border = "rounded",
-    title = title or cmd,
-    title_pos = "left",
-  })
+    local win = vim.api.nvim_get_current_win()
+    vim.api.nvim_win_set_width(win, width)
 
-  vim.bo[buf].bufhidden = "wipe"
-  vim.bo[buf].filetype = "terminal"
-  vim.bo[buf].readonly = true
-  vim.bo[buf].buftype = "nofile"
+    local buf = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_win_set_buf(win, buf)
 
-  vim.api.nvim_create_autocmd("TermEnter", {
-    buffer = buf,
-    callback = function()
-      vim.cmd("stopinsert")
-    end,
-  })
-  vim.api.nvim_create_autocmd("InsertEnter", {
-    buffer = buf,
-    callback = function()
-      vim.cmd("stopinsert")
-    end,
-  })
+    vim.bo[buf].bufhidden = "wipe"
+    vim.bo[buf].filetype = "terminal"
 
-  local function scroll_to_bottom()
-    if vim.api.nvim_win_is_valid(win) and vim.api.nvim_buf_is_valid(buf) then
-      local line_count = vim.api.nvim_buf_line_count(buf)
-      vim.api.nvim_win_set_cursor(win, { line_count, 0 })
-    end
+    return win, buf
   end
 
-  local _ = vim.fn.termopen(cmd, {
+  local win, buf = open_right_panel()
+
+  vim.fn.termopen(cmd, {
     on_exit = function(_, code, _)
       vim.schedule(function()
         if type(opts.on_exit) == "function" then
-          pcall(opts.on_exit, code, { win = win, buf = buf, cmd = cmd, title = title })
+          pcall(opts.on_exit, code, {
+            win = win,
+            buf = buf,
+            cmd = cmd,
+            title = title,
+          })
         end
 
-        if (code == 0 and close_term) then
+        if code == 0 and close_term then
           if vim.api.nvim_win_is_valid(win) then
             vim.api.nvim_win_close(win, true)
           end
         end
       end)
     end,
-    on_stdout = function()
-      vim.schedule(scroll_to_bottom)
-    end,
-    on_stderr = function()
-      vim.schedule(scroll_to_bottom)
-    end,
   })
 
-  vim.bo[buf].modifiable = false
+  vim.cmd("startinsert")
 end
 
 function M.get_conan_remotes_from_cli()

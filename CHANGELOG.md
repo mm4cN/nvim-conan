@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 - Placeholder for upcoming changes. Watch this space.
 
+## [1.5.3] - 2026-06-10
+### Modified: Terminal behavior changed from bloated code screen. Opening new buffer instead.
+
 ## [1.4.0] - 2026-02-21
 ### Added: support for conf specification which might be useful to skip tests
 
