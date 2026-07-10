@@ -1,0 +1,11 @@
+:Conan	nvim-conan.txt	/*:Conan*
+nvim-conan	nvim-conan.txt	/*nvim-conan*
+nvim-conan-checkhealth	nvim-conan.txt	/*nvim-conan-checkhealth*
+nvim-conan-commands	nvim-conan.txt	/*nvim-conan-commands*
+nvim-conan-config-file	nvim-conan.txt	/*nvim-conan-config-file*
+nvim-conan-configuration	nvim-conan.txt	/*nvim-conan-configuration*
+nvim-conan-installation	nvim-conan.txt	/*nvim-conan-installation*
+nvim-conan-requirements	nvim-conan.txt	/*nvim-conan-requirements*
+nvim-conan-setup	nvim-conan.txt	/*nvim-conan-setup*
+nvim-conan-toc	nvim-conan.txt	/*nvim-conan-toc*
+nvim-conan.txt	nvim-conan.txt	/*nvim-conan.txt*

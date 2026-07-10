@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 - Placeholder for upcoming changes. Watch this space.
 
+## [2.0.0] - 2026-07-10
+### Added
+- `:checkhealth conan` to verify Neovim, Conan, and Telescope requirements.
+- Built-in Vim help with generated helptags for `:help nvim-conan`.
+
+### Changed
+- Neovim requirement raised to 0.12 or higher.
+- Conan must now be installed manually and available on your `PATH`.
+
+### Removed
+- Automatic Conan installation via `pip`.
+
 ## [1.5.3] - 2026-06-10
 ### Modified: Terminal behavior changed from bloated code screen. Opening new buffer instead.
 

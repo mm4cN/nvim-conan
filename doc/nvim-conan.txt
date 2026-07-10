@@ -1,0 +1,129 @@
+*nvim-conan.txt*            nvim-conan for Neovim            *nvim-conan*
+
+Author: mm4cN
+
+nvim-conan integrates Conan workflows into Neovim with a single |:Conan|
+command, interactive Telescope pickers, and project-local configuration.
+
+==============================================================================
+CONTENTS                                                      *nvim-conan-toc*
+
+1. Requirements .................................... |nvim-conan-requirements|
+2. Installation .................................... |nvim-conan-installation|
+3. Setup .................................................... |nvim-conan-setup|
+4. Commands .............................................. |nvim-conan-commands|
+5. Configuration .................................... |nvim-conan-configuration|
+6. Health check ...................................... |nvim-conan-checkhealth|
+
+==============================================================================
+1. Requirements                                       *nvim-conan-requirements*
+
+- Neovim 0.12 or newer
+- Conan 2.x available on your PATH
+- telescope.nvim
+
+Conan is not installed automatically. Install it manually and make sure
+`conan --version` works in the same environment where Neovim starts.
+
+==============================================================================
+2. Installation                                       *nvim-conan-installation*
+
+Example with lazy.nvim: >
+  return {
+    "mm4cN/nvim-conan",
+    dependencies = {
+      "nvim-telescope/telescope.nvim",
+    },
+  }
+<
+
+==============================================================================
+3. Setup                                                     *nvim-conan-setup*
+
+Call `setup()` once during startup: >
+  require("conan").setup()
+<
+
+The plugin:
+- checks whether `conan` is executable
+- defines the |:Conan| user command
+- detects `conanfile*.py` and `conanfile*.txt` in the current working directory
+- creates `.nvim-conan.json` when a Conan project is detected and no config
+  exists yet
+
+==============================================================================
+4. Commands                                               *nvim-conan-commands*
+
+                                                        *:Conan*
+The main entry point is: >
+  :Conan {subcommand} [args]
+<
+
+Available subcommands:
+
+`install`
+    Run `conan install` using values from |nvim-conan-config-file|.
+
+`build`
+    Run `conan build`. If a new `compile_commands.json` is produced, the plugin
+    links the newest one into the project root.
+
+`lock`
+    Run `conan lock create` for the configured recipe.
+
+`create`
+    Run `conan create`.
+
+`export [user] [channel]`
+    Run `conan export` for the configured recipe.
+
+`export_package [user] [channel]`
+    Run `conan export-pkg` for the configured recipe.
+
+`search {pattern} [remote]`
+    Search Conan packages asynchronously and open Telescope results. Press
+    <Enter> in the picker to copy a reference, or <C-i> to insert it.
+
+`upload`
+    Pick a remote and a cached reference with Telescope, then run
+    `conan upload ... --confirm`.
+
+`reconfigure`
+    Rebuild `.nvim-conan.json` interactively.
+
+==============================================================================
+5. Configuration                                     *nvim-conan-configuration*
+
+Project settings are stored in: >
+  .nvim-conan.json
+<
+                                                        *nvim-conan-config-file*
+Typical shape: >
+  {
+    "recipe": ".",
+    "version": "2.0.0",
+    "profile_build": "default",
+    "profile_host": "default",
+    "build_policy": "missing",
+    "options": {},
+    "conf": {}
+  }
+<
+
+The config is created interactively from the current working directory and is
+used by `install`, `build`, `lock`, `create`, `export`, and `export_package`.
+
+==============================================================================
+6. Health check                                         *nvim-conan-checkhealth*
+
+Run: >
+  :checkhealth conan
+<
+
+The health check reports:
+- whether Neovim satisfies the minimum version
+- whether `conan` is executable and is Conan 2.x
+- whether telescope.nvim modules required by the plugin are available
+
+==============================================================================
+vim:tw=78:ts=8:noet:ft=help:norl:

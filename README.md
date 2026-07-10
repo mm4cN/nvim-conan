@@ -51,24 +51,27 @@ Default setup:
 require("conan").setup()
 ```
 
-This automatically checks for Conan, bootstraps config files, and provides :Conan commands.
+This checks whether Conan is available, bootstraps config files, and provides :Conan commands.
 
 -------
 
 # 📋 Requirements
 
-Neovim: 0.10 or higher
+Neovim: 0.12 or higher
 
 Lua: 5.1+ (included with Neovim)
 
-Conan: 2.x — installed globally or via Python/pip
+Conan: 2.x — installed manually and available on your PATH
 
 [Telescope.nvim](https://github.com/nvim-telescope/telescope.nvim): Required for interactive remote/ref pickers (used by upload)
+
+Run `:checkhealth conan` to verify the required components are available.
 
 -------
 
 # 📚 Documentation
 
+[`:help nvim-conan`](doc/nvim-conan.txt): Built-in help for setup, commands, config, and health checks.
 [CHANGELOG.md](CHANGELOG.md): Stay updated with the latest changes.
 [CONTRIBUTING.md](CONTRIBUTING.md): Guidelines for contributing to the project.
 
@@ -81,4 +84,3 @@ This project is licensed under the MIT License.
 ------
 
 *Embrace the harmony of Neovim and Conan, orchestrated through Lua.*
-

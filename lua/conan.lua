@@ -5,28 +5,10 @@ local function conan_check_or_install()
     return
   end
 
-  local py = vim.g.python3_host_prog or "python3"
-  vim.fn.system(py .. " -m pip --version")
-  local pip_available = vim.v.shell_error == 0
-
-  if not pip_available then
-    vim.notify("'conan' executable is missing and pip is unavailable to install it.\nCheck your Python provider or install manually.", vim.log.levels.ERROR)
-    return
-  end
-
-  local choice = vim.fn.input("'conan' not found. Install with pip? [y/N]: ")
-  if choice:lower() ~= "y" then
-    vim.notify("'conan' is required but not installed.", vim.log.levels.ERROR)
-    return
-  end
-
-  vim.fn.system(py .. " -m pip install --user conan")
-  if vim.v.shell_error == 0 then
-    vim.notify("✅ Installed 'conan' using pip", vim.log.levels.INFO)
-    return
-  end
-
-  vim.notify("❌ Failed to install 'conan' using pip", vim.log.levels.ERROR)
+  vim.notify(
+    "'conan' executable is missing. Install Conan 2.x manually and ensure it is available on your PATH.",
+    vim.log.levels.ERROR
+  )
 end
 
 ---@class ConanSubCommand

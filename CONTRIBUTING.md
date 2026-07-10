@@ -33,8 +33,8 @@ If you're using [lazy.nvim](https://github.com/folke/lazy.nvim), point to your l
 
 Before contributing, make sure the following tools are installed:
 
-- Neovim 0.10+
-- Conan 2.x – Installed globally or via pip
+- Neovim 0.12+
+- Conan 2.x – Installed manually and available on your PATH
 - [Telescope.nvim](https://github.com/nvim-telescope/telescope.nvim): Required for interactive pickers
 - A working Python 3 provider for Neovim (check with :checkhealth)
 - A basic C/C++ toolchain for testing Conan builds locally
@@ -77,4 +77,3 @@ Thanks again for contributing 💚
 ---
 
 Let me know if you'd like to add a **`Makefile` or setup script** for common dev tasks, or a `:Conan debug` mode that outputs internal state.
-
