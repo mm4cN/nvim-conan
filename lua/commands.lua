@@ -99,6 +99,13 @@ function M.install()
     config.build_policy
   )
 
+  -- Handle lockfile: use config.lockfile if specified, otherwise fall back to checking for conan.lock
+  if config.lockfile and config.lockfile ~= "" then
+    cmd = cmd .. " --lockfile " .. config.lockfile
+  elseif vim.loop.fs_stat(vim.fn.getcwd() .. "/conan.lock") ~= nil then
+    cmd = cmd .. " --lockfile conan.lock"
+  end
+
   run_terminal_with_status("📦 Conan: install", cmd, "📦 Conan Install", true)
 end
 
@@ -135,8 +142,10 @@ function M.build()
     conf_str
   )
 
-  if vim.loop.fs_stat(vim.fn.getcwd() .. "/conan.lock") ~= nil then
-    cmd = cmd .. " --lockfile=conan.lock"
+  if config.lockfile and config.lockfile ~= "" then
+    cmd = cmd .. " --lockfile " .. config.lockfile
+  elseif vim.loop.fs_stat(vim.fn.getcwd() .. "/conan.lock") ~= nil then
+    cmd = cmd .. " --lockfile conan.lock"
   end
 
   run_terminal_with_status(

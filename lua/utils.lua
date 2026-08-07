@@ -364,34 +364,44 @@ function M.reconfigure()
         M.pick_build_policy(function(build_policy)
           prompt_for("options", function(options)
             prompt_for("conf", function(conf)
-              M.ensure_config(config_path, {
-                recipe = recipe,
-                version = version,
-                profile_build = build_profile,
-                profile_host = host_profile,
-                build_policy = build_policy,
-                options = options or {},
-                conf = conf or {},
-              })
+              vim.ui.input({
+                  prompt = "Enter lockfile path (optional): " },
+                function(lockfile)
+                local config_tbl = {
+                  recipe = recipe,
+                  version = version,
+                  profile_build = build_profile,
+                  profile_host = host_profile,
+                  build_policy = build_policy,
+                  options = options or {},
+                  conf = conf or {},
+                }
 
-              vim.notify(string.format(
-                "🎯 Configured with host: %s, build: %s, policy: %s",
-                host_profile, build_profile, build_policy
-              ), vim.log.levels.INFO)
+                if lockfile and lockfile ~= "" then
+                  config_tbl.lockfile = lockfile
+                end
 
-              local ok, config = pcall(function()
-                local file = io.open(config_path, "r")
-                if not file then return nil end
-                local content = file:read("*a")
-                file:close()
-                return vim.json.decode(content)
+                M.ensure_config(config_path, config_tbl)
+
+                vim.notify(string.format(
+                  "🎯 Configured with host: %s, build: %s, policy: %s",
+                  host_profile, build_profile, build_policy
+                ), vim.log.levels.INFO)
+
+                local ok, config = pcall(function()
+                  local file = io.open(config_path, "r")
+                  if not file then return nil end
+                  local content = file:read("*a")
+                  file:close()
+                  return vim.json.decode(content)
+                end)
+
+                if ok and config then
+                  M.check_version_compat(config.version, version)
+                else
+                  vim.notify("⚠️ Failed to read config after reconfigure", vim.log.levels.WARN)
+                end
               end)
-
-              if ok and config then
-                M.check_version_compat(config.version, version)
-              else
-                vim.notify("⚠️ Failed to read config after reconfigure", vim.log.levels.WARN)
-              end
             end)
           end)
         end)

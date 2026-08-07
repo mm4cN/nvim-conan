@@ -84,7 +84,6 @@ vim.api.nvim_create_user_command("Conan", ConanCmd, {
 })
 
 ---Setup the Conan plugin
----Setup the Conan plugin
 M.setup = function()
   conan_check_or_install()
 
