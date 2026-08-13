@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 - Placeholder for upcoming changes. Watch this space.
 
+## [3.0.0] - 2026-08-13
+### Breaking Changes
+- Config file renamed from `.nvim-conan.json` to `conan-config.json`. Existing config files must be renamed manually.
+- Plugin entry point ported from `plugin/conan.vim` to `plugin/conan.lua`.
+
+### Added
+- Config is now also discovered in `.vscode/conan-config.json`, allowing teams to co-locate it with other VS Code workspace settings. If either location contains a config, the setup wizard is skipped.
+- Guard in `setup()` prevents double-initialisation when plugin managers call `setup()` explicitly alongside the auto-call from the plugin entry point.
+
 ## [2.0.0] - 2026-07-10
 ### Added
 - `:checkhealth conan` to verify Neovim, Conan, and Telescope requirements.

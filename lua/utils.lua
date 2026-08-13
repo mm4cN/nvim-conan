@@ -6,7 +6,20 @@ end
 
 local function conan_config_abspath()
   local cwd = vim.fn.getcwd()
-  return cwd .. "/.nvim-conan.json"
+  return cwd .. "/conan-config.json"
+end
+
+function M.find_config(cwd)
+  local candidates = {
+    cwd .. "/conan-config.json",
+    cwd .. "/.vscode/conan-config.json",
+  }
+  for _, path in ipairs(candidates) do
+    if M.file_exists(path) then
+      return path
+    end
+  end
+  return nil
 end
 
 function M.write_json_file(path, tbl)

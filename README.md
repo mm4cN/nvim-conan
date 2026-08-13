@@ -51,7 +51,9 @@ Default setup:
 require("conan").setup()
 ```
 
-This checks whether Conan is available, bootstraps config files, and provides :Conan commands.
+This checks whether Conan is available, bootstraps config files, and provides `:Conan` commands.
+
+On first use in a Conan project, an interactive wizard creates a `conan-config.json` in your project root. The plugin also recognises `conan-config.json` placed inside a `.vscode/` subdirectory, so teams that already keep per-project settings there don't need a duplicate file.
 
 -------
 
