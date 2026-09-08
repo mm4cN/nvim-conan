@@ -6,7 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
-- Placeholder for upcoming changes. Watch this space.
+
+### Changed
+
+- Conan build policies are now optional. Automatic first-time setup leaves the policy unset, while
+  `:Conan reconfigure` accepts an optional free-form value such as `missing:zlib/*`.
+- Conan commands omit `--build` when no nonblank `build_policy` is configured; existing configured
+  policies remain supported.
 
 ## [3.0.0] - 2026-08-13
 ### Breaking Changes

@@ -107,7 +107,7 @@ M.setup = function()
   local config_path = utils.find_config(cwd)
   if not config_path then
     vim.schedule(function()
-      utils.reconfigure()
+      utils.configure()
     end)
     return
   end

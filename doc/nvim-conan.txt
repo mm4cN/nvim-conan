@@ -48,8 +48,8 @@ The plugin:
 - checks whether `conan` is executable
 - defines the |:Conan| user command
 - detects `conanfile*.py` and `conanfile*.txt` in the current working directory
-- creates `.nvim-conan.json` when a Conan project is detected and no config
-  exists yet
+- creates `conan-config.json` when a Conan project is detected and no config
+  exists yet; this first-time flow does not request or store a build policy
 
 ==============================================================================
 4. Commands                                               *nvim-conan-commands*
@@ -89,13 +89,14 @@ Available subcommands:
     `conan upload ... --confirm`.
 
 `reconfigure`
-    Rebuild `.nvim-conan.json` interactively.
+    Rebuild `conan-config.json` interactively. This explicit flow offers an
+    optional free-form build-policy input.
 
 ==============================================================================
 5. Configuration                                     *nvim-conan-configuration*
 
 Project settings are stored in: >
-  .nvim-conan.json
+  conan-config.json
 <
                                                         *nvim-conan-config-file*
 Typical shape: >
@@ -104,7 +105,6 @@ Typical shape: >
     "version": "2.0.0",
     "profile_build": "default",
     "profile_host": "default",
-    "build_policy": "missing",
     "options": {},
     "conf": {}
   }
@@ -112,6 +112,15 @@ Typical shape: >
 
 The config is created interactively from the current working directory and is
 used by `install`, `build`, `lock`, `create`, `export`, and `export_package`.
+
+`build_policy` is optional and is not generated during automatic first-time
+setup. |:Conan| `reconfigure` asks for an optional free-form value after the
+profiles are selected. Enter only the portion following `--build=`, such as
+`missing` or `missing:zlib/*`. An empty value omits the setting and preserves
+Conan's default behavior. A configured value is appended to applicable commands
+as `--build=<value>`. Existing configs may therefore include, for example: >
+  "build_policy": "missing"
+<
 
 ==============================================================================
 6. Health check                                         *nvim-conan-checkhealth*

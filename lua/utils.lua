@@ -271,32 +271,6 @@ function M.pick_conan_profile(prompt, callback)
     :find()
 end
 
-function M.pick_build_policy(callback)
-  local pickers = require("telescope.pickers")
-  local finders = require("telescope.finders")
-  local conf = require("telescope.config").values
-  local actions = require("telescope.actions")
-  local action_state = require("telescope.actions.state")
-
-  local options = { "missing", "never", "always" }
-
-  pickers
-    .new({}, {
-      prompt_title = "Select Build Policy",
-      finder = finders.new_table({ results = options }),
-      sorter = conf.generic_sorter({}),
-      attach_mappings = function(bufnr)
-        actions.select_default:replace(function()
-          actions.close(bufnr)
-          local selection = action_state.get_selected_entry()[1]
-          callback(selection)
-        end)
-        return true
-      end,
-    })
-    :find()
-end
-
 function M.pick_recipe(prompt, callback)
   local pickers = require("telescope.pickers")
   local finders = require("telescope.finders")
@@ -382,19 +356,25 @@ local function prompt_for(what, callback)
   prompt()
 end
 
-function M.reconfigure()
+local function optional_build_policy(callback)
+  vim.ui.input({
+    prompt = "Build policy (optional; value after --build=, e.g. missing or missing:zlib/*): ",
+  }, function(input)
+    if type(input) == "string" then
+      input = vim.trim(input)
+    end
+    callback(input ~= "" and input or nil)
+  end)
+end
+
+local function configure(configuration_options)
   local version = require("version")
   local config_path = conan_config_abspath()
-
-  if M.file_exists(config_path) then
-    vim.loop.fs_unlink(config_path)
-    vim.notify("✅ Removed old config", vim.log.levels.INFO)
-  end
 
   M.pick_recipe("Select Conan Recipe", function(recipe)
     M.pick_conan_profile("Select Host Profile", function(host_profile)
       M.pick_conan_profile("Select Build Profile", function(build_profile)
-        M.pick_build_policy(function(build_policy)
+        local function finish_configuration(build_policy)
           prompt_for("options", function(options)
             prompt_for("conf", function(conf)
               vim.ui.input({
@@ -405,10 +385,13 @@ function M.reconfigure()
                   version = version,
                   profile_build = build_profile,
                   profile_host = host_profile,
-                  build_policy = build_policy,
                   options = options or {},
                   conf = conf or {},
                 }
+
+                if build_policy then
+                  config_tbl.build_policy = build_policy
+                end
 
                 if lockfile and lockfile ~= "" then
                   config_tbl.lockfile = lockfile
@@ -418,10 +401,10 @@ function M.reconfigure()
 
                 vim.notify(
                   string.format(
-                    "🎯 Configured with host: %s, build: %s, policy: %s",
+                    "🎯 Configured with host: %s, build: %s%s",
                     host_profile,
                     build_profile,
-                    build_policy
+                    build_policy and ", policy: " .. build_policy or ""
                   ),
                   vim.log.levels.INFO
                 )
@@ -444,10 +427,32 @@ function M.reconfigure()
               end)
             end)
           end)
-        end)
+        end
+
+        if configuration_options.prompt_for_build_policy then
+          optional_build_policy(finish_configuration)
+        else
+          finish_configuration(nil)
+        end
       end)
     end)
   end)
+end
+
+function M.configure()
+  local configuration_options = { prompt_for_build_policy = false }
+  configure(configuration_options)
+end
+
+function M.reconfigure()
+  local config_path = conan_config_abspath()
+  if M.file_exists(config_path) then
+    vim.loop.fs_unlink(config_path)
+    vim.notify("✅ Removed old config", vim.log.levels.INFO)
+  end
+
+  local configuration_options = { prompt_for_build_policy = true }
+  configure(configuration_options)
 end
 
 return M
