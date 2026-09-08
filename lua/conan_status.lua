@@ -13,9 +13,9 @@ end
 local function in_conan_project()
   local cwd = vim.fn.getcwd()
   return exists(cwd .. "/conanfile.py")
-      or exists(cwd .. "/conanfile.txt")
-      or exists(cwd .. "/.nvim-conan.json")
-      or exists(cwd .. "/conan.lock")
+    or exists(cwd .. "/conanfile.txt")
+    or exists(cwd .. "/.nvim-conan.json")
+    or exists(cwd .. "/conan.lock")
 end
 
 local function redraw()
@@ -34,11 +34,15 @@ function M.start(text)
 
   M._spin_i = 1
   M._timer = vim.loop.new_timer()
-  M._timer:start(0, 60, vim.schedule_wrap(function()
-    vim.g.conan_busy_spin = M._frames[M._spin_i]
-    M._spin_i = (M._spin_i % #M._frames) + 1
-    redraw()
-  end))
+  M._timer:start(
+    0,
+    60,
+    vim.schedule_wrap(function()
+      vim.g.conan_busy_spin = M._frames[M._spin_i]
+      M._spin_i = (M._spin_i % #M._frames) + 1
+      redraw()
+    end)
+  )
 
   redraw()
 end

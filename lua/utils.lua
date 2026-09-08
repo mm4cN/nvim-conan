@@ -39,7 +39,9 @@ function M.encode_json(tbl, indent)
   local indent_str = string.rep("  ", indent + 1)
   local lines = { "{" }
   local i, n = 0, 0
-  for _ in pairs(tbl) do n = n + 1 end
+  for _ in pairs(tbl) do
+    n = n + 1
+  end
 
   for k, v in pairs(tbl) do
     i = i + 1
@@ -52,14 +54,17 @@ function M.encode_json(tbl, indent)
     elseif type(v) == "table" and (k == "options" or k == "conf") then
       local opts_lines = { "{" }
       local oi, on = 0, 0
-      for _ in pairs(v) do on = on + 1 end
+      for _ in pairs(v) do
+        on = on + 1
+      end
       for ok, ov in pairs(v) do
         oi = oi + 1
         local opt_key = string.format('"%s"', tostring(ok))
-        local opt_val = type(ov) == "number" or type(ov) == "boolean" and tostring(ov) or
-            string.format("%q", tostring(ov))
+        local opt_val = type(ov) == "number"
+          or type(ov) == "boolean" and tostring(ov)
+          or string.format("%q", tostring(ov))
         local opt_comma = (oi < on) and "," or ""
-        table.insert(opts_lines, string.format('%s  %s: %s%s', indent_str, opt_key, opt_val, opt_comma))
+        table.insert(opts_lines, string.format("%s  %s: %s%s", indent_str, opt_key, opt_val, opt_comma))
       end
       table.insert(opts_lines, indent_str .. "}")
       val = table.concat(opts_lines, "\n")
@@ -68,7 +73,7 @@ function M.encode_json(tbl, indent)
     end
 
     local comma = (i < n) and "," or ""
-    table.insert(lines, string.format('%s%s: %s%s', indent_str, key, val, comma))
+    table.insert(lines, string.format("%s%s: %s%s", indent_str, key, val, comma))
   end
 
   table.insert(lines, string.rep("  ", indent) .. "}")
@@ -95,10 +100,14 @@ function M.check_version_compat(config_version, plugin_version)
   local plugin_major = M.get_major_version(plugin_version)
 
   if config_major ~= plugin_major then
-    vim.notify(string.format(
-      "⚠️ Config version (%s) might not be compatible with plugin version (%s).\nPlease review your config file.",
-      config_version, plugin_version
-    ), vim.log.levels.INFO)
+    vim.notify(
+      string.format(
+        "⚠️ Config version (%s) might not be compatible with plugin version (%s).\nPlease review your config file.",
+        config_version,
+        plugin_version
+      ),
+      vim.log.levels.INFO
+    )
   end
 end
 
@@ -242,19 +251,21 @@ function M.pick_conan_profile(prompt, callback)
     return
   end
 
-  pickers.new({}, {
-    prompt_title = prompt,
-    finder = finders.new_table { results = profiles },
-    sorter = conf.generic_sorter({}),
-    attach_mappings = function(bufnr)
-      actions.select_default:replace(function()
-        actions.close(bufnr)
-        local selection = action_state.get_selected_entry()[1]
-        callback(selection)
-      end)
-      return true
-    end,
-  }):find()
+  pickers
+    .new({}, {
+      prompt_title = prompt,
+      finder = finders.new_table({ results = profiles }),
+      sorter = conf.generic_sorter({}),
+      attach_mappings = function(bufnr)
+        actions.select_default:replace(function()
+          actions.close(bufnr)
+          local selection = action_state.get_selected_entry()[1]
+          callback(selection)
+        end)
+        return true
+      end,
+    })
+    :find()
 end
 
 function M.pick_build_policy(callback)
@@ -266,19 +277,21 @@ function M.pick_build_policy(callback)
 
   local options = { "missing", "never", "always" }
 
-  pickers.new({}, {
-    prompt_title = "Select Build Policy",
-    finder = finders.new_table { results = options },
-    sorter = conf.generic_sorter({}),
-    attach_mappings = function(bufnr)
-      actions.select_default:replace(function()
-        actions.close(bufnr)
-        local selection = action_state.get_selected_entry()[1]
-        callback(selection)
-      end)
-      return true
-    end,
-  }):find()
+  pickers
+    .new({}, {
+      prompt_title = "Select Build Policy",
+      finder = finders.new_table({ results = options }),
+      sorter = conf.generic_sorter({}),
+      attach_mappings = function(bufnr)
+        actions.select_default:replace(function()
+          actions.close(bufnr)
+          local selection = action_state.get_selected_entry()[1]
+          callback(selection)
+        end)
+        return true
+      end,
+    })
+    :find()
 end
 
 function M.pick_recipe(prompt, callback)
@@ -290,19 +303,21 @@ function M.pick_recipe(prompt, callback)
 
   local recipes = vim.fn.glob(vim.fn.getcwd() .. "/conanfile*.py", false, true)
 
-  pickers.new({}, {
-    prompt_title = prompt,
-    finder = finders.new_table { results = recipes },
-    sorter = conf.generic_sorter({}),
-    attach_mappings = function(bufnr)
-      actions.select_default:replace(function()
-        actions.close(bufnr)
-        local selection = action_state.get_selected_entry()[1]
-        callback(selection)
-      end)
-      return true
-    end,
-  }):find()
+  pickers
+    .new({}, {
+      prompt_title = prompt,
+      finder = finders.new_table({ results = recipes }),
+      sorter = conf.generic_sorter({}),
+      attach_mappings = function(bufnr)
+        actions.select_default:replace(function()
+          actions.close(bufnr)
+          local selection = action_state.get_selected_entry()[1]
+          callback(selection)
+        end)
+        return true
+      end,
+    })
+    :find()
 end
 
 function M.find_latest_compile_commands()
@@ -324,7 +339,9 @@ function M.find_latest_compile_commands()
 end
 
 function M.link_compile_commands(path)
-  if type(path) ~= "string" or path == "" then return end
+  if type(path) ~= "string" or path == "" then
+    return
+  end
 
   local cwd = vim.fn.getcwd()
   local target = cwd .. "/compile_commands.json"
@@ -344,20 +361,20 @@ local function prompt_for(what, callback)
   local options = {}
   local function prompt()
     vim.ui.input({
-        prompt = "Enter " .. what .. " (key=value), enter with blank field to finish: " },
-      function(input)
-        if input and input ~= "" then
-          local k, v = input:match("^%s*(.-)%s*=%s*(.-)%s*$")
-          if k and v and k ~= "" and v ~= "" then
-            options[k] = v
-          else
-            vim.notify("Invalid input. Use key=value format.", vim.log.levels.WARN)
-          end
-          prompt()
+      prompt = "Enter " .. what .. " (key=value), enter with blank field to finish: ",
+    }, function(input)
+      if input and input ~= "" then
+        local k, v = input:match("^%s*(.-)%s*=%s*(.-)%s*$")
+        if k and v and k ~= "" and v ~= "" then
+          options[k] = v
         else
-          callback(options)
+          vim.notify("Invalid input. Use key=value format.", vim.log.levels.WARN)
         end
-      end)
+        prompt()
+      else
+        callback(options)
+      end
+    end)
   end
   prompt()
 end
@@ -378,8 +395,8 @@ function M.reconfigure()
           prompt_for("options", function(options)
             prompt_for("conf", function(conf)
               vim.ui.input({
-                  prompt = "Enter lockfile path (optional): " },
-                function(lockfile)
+                prompt = "Enter lockfile path (optional): ",
+              }, function(lockfile)
                 local config_tbl = {
                   recipe = recipe,
                   version = version,
@@ -396,14 +413,21 @@ function M.reconfigure()
 
                 M.ensure_config(config_path, config_tbl)
 
-                vim.notify(string.format(
-                  "🎯 Configured with host: %s, build: %s, policy: %s",
-                  host_profile, build_profile, build_policy
-                ), vim.log.levels.INFO)
+                vim.notify(
+                  string.format(
+                    "🎯 Configured with host: %s, build: %s, policy: %s",
+                    host_profile,
+                    build_profile,
+                    build_policy
+                  ),
+                  vim.log.levels.INFO
+                )
 
                 local ok, config = pcall(function()
                   local file = io.open(config_path, "r")
-                  if not file then return nil end
+                  if not file then
+                    return nil
+                  end
                   local content = file:read("*a")
                   file:close()
                   return vim.json.decode(content)
