@@ -98,9 +98,9 @@ make format
 
 # 📚 Documentation
 
-[`:help nvim-conan`](doc/nvim-conan.txt): Built-in help for setup, commands, config, and health checks.
-[CHANGELOG.md](CHANGELOG.md): Stay updated with the latest changes.
-[CONTRIBUTING.md](CONTRIBUTING.md): Guidelines for contributing to the project.
+- [`:help nvim-conan`](doc/nvim-conan.txt): Built-in help for setup, commands, config, and health checks.
+- [CHANGELOG.md](CHANGELOG.md): Stay updated with the latest changes.
+- [CONTRIBUTING.md](CONTRIBUTING.md): Guidelines for contributing to the project.
 
 ----- 
 
