@@ -26,6 +26,10 @@ A Lua-crafted bridge between Neovim and Conan, the C/C++ package manager.
 - ⚡ **Neovim Native**  
   No Python wrappers. No frills. Pure Lua.
 
+- 🛡️ **Safe Command Execution**
+  Conan commands are passed as argument lists, so paths and values containing spaces or shell
+  metacharacters remain literal arguments.
+
 ---
 
 # ⚙️ Installation
@@ -68,6 +72,27 @@ Conan: 2.x — installed manually and available on your PATH
 [Telescope.nvim](https://github.com/nvim-telescope/telescope.nvim): Required for interactive remote/ref pickers (used by upload)
 
 Run `:checkhealth conan` to verify the required components are available.
+
+-------
+
+# 🧪 Development
+
+Install the test dependencies and run the headless Neovim test suite:
+
+```bash
+make deps
+make test
+```
+
+Tests use `mini.test` with real Telescope and Plenary dependencies. Command construction is kept
+in the pure Lua `conan.command_builder` module so it can be tested without loading UI code.
+
+Check or apply Lua formatting with StyLua:
+
+```bash
+make format-check
+make format
+```
 
 -------
 
