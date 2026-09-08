@@ -38,6 +38,30 @@ test_set["install omits an unresolved lockfile"] = function()
   })
 end
 
+test_set["install omits missing, empty, and whitespace-only build policies"] = function()
+  local configs = {
+    {
+      recipe = config.recipe,
+      profile_build = config.profile_build,
+      profile_host = config.profile_host,
+    },
+    vim.tbl_extend("force", config, { build_policy = "" }),
+    vim.tbl_extend("force", config, { build_policy = "   \t " }),
+  }
+
+  for _, policy_config in ipairs(configs) do
+    expect.equality(command_builder.install(policy_config), {
+      "conan",
+      "install",
+      "recipes/conanfile.py",
+      "-pr:b",
+      "build-profile",
+      "-pr:h",
+      "host-profile",
+    })
+  end
+end
+
 test_set["build sorts options and conf deterministically"] = function()
   local build_config = vim.tbl_extend("force", config, {
     options = { zlib = true, shared = false },
@@ -63,6 +87,31 @@ test_set["build sorts options and conf deterministically"] = function()
     "tools.cmake:generator=Ninja",
     "--lockfile",
     "conan.lock",
+  })
+end
+
+test_set["build preserves an arbitrary build policy pattern and argument ordering"] = function()
+  local build_config = vim.tbl_extend("force", config, {
+    build_policy = "missing:zlib/*",
+    options = { shared = true },
+    conf = { ["tools.build:jobs"] = 4 },
+  })
+
+  expect.equality(command_builder.build(build_config, "locks/project.lock"), {
+    "conan",
+    "build",
+    "recipes/conanfile.py",
+    "-pr:b",
+    "build-profile",
+    "-pr:h",
+    "host-profile",
+    "--build=missing:zlib/*",
+    "-o",
+    "shared=true",
+    "-c",
+    "tools.build:jobs=4",
+    "--lockfile",
+    "locks/project.lock",
   })
 end
 
@@ -104,6 +153,20 @@ test_set["create preserves profile and recipe ordering"] = function()
     "-pr:h",
     "host-profile",
     "--build=missing",
+    "recipes/conanfile.py",
+  })
+end
+
+test_set["create omits a blank build policy without changing argument ordering"] = function()
+  local create_config = vim.tbl_extend("force", config, { build_policy = " \t" })
+
+  expect.equality(command_builder.create(create_config), {
+    "conan",
+    "create",
+    "-pr:b",
+    "build-profile",
+    "-pr:h",
+    "host-profile",
     "recipes/conanfile.py",
   })
 end

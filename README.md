@@ -59,6 +59,11 @@ This checks whether Conan is available, bootstraps config files, and provides `:
 
 On first use in a Conan project, an interactive wizard creates a `conan-config.json` in your project root. The plugin also recognises `conan-config.json` placed inside a `.vscode/` subdirectory, so teams that already keep per-project settings there don't need a duplicate file.
 
+The first-time wizard leaves Conan's optional build policy unset. Running `:Conan reconfigure`
+offers a free-form optional input for the value following `--build=` (for example, `missing` or
+`missing:zlib/*`). Leaving it empty preserves Conan's default behavior; when configured, the value
+is stored as `build_policy` and commands append it as `--build=<value>`.
+
 -------
 
 # 📋 Requirements
@@ -98,9 +103,9 @@ make format
 
 # 📚 Documentation
 
-[`:help nvim-conan`](doc/nvim-conan.txt): Built-in help for setup, commands, config, and health checks.
-[CHANGELOG.md](CHANGELOG.md): Stay updated with the latest changes.
-[CONTRIBUTING.md](CONTRIBUTING.md): Guidelines for contributing to the project.
+- [`:help nvim-conan`](doc/nvim-conan.txt): Built-in help for setup, commands, config, and health checks.
+- [CHANGELOG.md](CHANGELOG.md): Stay updated with the latest changes.
+- [CONTRIBUTING.md](CONTRIBUTING.md): Guidelines for contributing to the project.
 
 ----- 
 

@@ -10,8 +10,19 @@ local function append_profiles(argv, config)
   append(argv, "-pr:b", config.profile_build, "-pr:h", config.profile_host)
 end
 
+local function trim(value)
+  return value:match("^%s*(.-)%s*$")
+end
+
 local function append_build_policy(argv, config)
-  append(argv, "--build=" .. tostring(config.build_policy))
+  if type(config.build_policy) ~= "string" then
+    return
+  end
+
+  local build_policy = trim(config.build_policy)
+  if build_policy ~= "" then
+    append(argv, "--build=" .. build_policy)
+  end
 end
 
 local function append_lockfile(argv, lockfile)

@@ -82,10 +82,13 @@ You can use a test config:
 ```json
 {
   "profile_host": "default",
-  "profile_build": "default",
-  "build_policy": "missing"
+  "profile_build": "default"
 }
 ```
+
+`build_policy` is optional. To exercise an explicitly configured policy, add any Conan-supported
+value, such as `"build_policy": "missing:zlib/*"`; the plugin passes it as
+`--build=missing:zlib/*`.
 -------
 
 ## ✨ Suggestions Welcome
