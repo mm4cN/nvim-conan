@@ -8,7 +8,7 @@
 --- - Telescope UI for `conan search` results
 ---
 --- Requirements:
---- - `utils.open_floating_terminal(cmd, title, close_term, opts)` supports `opts.on_exit(code, ctx?)`
+--- - `utils.open_floating_terminal(argv, title, close_term, opts)` supports `opts.on_exit(code, ctx?)`
 --- - `conan_status.start(text)` accepts optional text and renders it in statusline
 local M = {
   ---@private
@@ -23,6 +23,7 @@ local actions = require("telescope.actions")
 local action_state = require("telescope.actions.state")
 
 local conan_status = require("conan_status")
+local command_builder = require("conan.command_builder")
 
 --- Reads and decodes `conan-config.json` from cwd or `.vscode/` subdirectory.
 --- Returns nil on any error (missing file / invalid JSON / IO error).
@@ -50,19 +51,19 @@ local function read_config()
   return config
 end
 
---- Runs a shell command in a floating terminal and shows a busy spinner in statusline.
+--- Runs a command in a floating terminal and shows a busy spinner in statusline.
 --- Spinner stops when the terminal job exits (success or failure).
 ---
 --- This is the preferred runner for long-running Conan commands (install/build/etc.).
 ---@param text string Statusline text to show while the command runs.
----@param cmd string Shell command executed in the floating terminal.
+---@param argv string[] Command and arguments executed in the floating terminal.
 ---@param title string Floating window title.
 ---@param close_term boolean If true, closes terminal window automatically on exit code 0.
-local function run_terminal_with_status(text, cmd, title, close_term, on_exit)
+local function run_terminal_with_status(text, argv, title, close_term, on_exit)
   local utils = require("utils")
   conan_status.start(text)
 
-  utils.open_floating_terminal(cmd, title, close_term, {
+  utils.open_floating_terminal(argv, title, close_term, {
     on_exit = function(code)
       conan_status.stop()
 
@@ -75,6 +76,16 @@ local function run_terminal_with_status(text, cmd, title, close_term, on_exit)
       end
     end,
   })
+end
+
+local function resolve_lockfile(config)
+  if config.lockfile and config.lockfile ~= "" then
+    return config.lockfile
+  end
+  if vim.loop.fs_stat(vim.fn.getcwd() .. "/conan.lock") ~= nil then
+    return "conan.lock"
+  end
+  return nil
 end
 
 -- -------------------------
@@ -90,22 +101,8 @@ function M.install()
     return
   end
 
-  local cmd = string.format(
-    "conan install %s -pr:b %s -pr:h %s --build=%s",
-    config.recipe or ".",
-    config.profile_build,
-    config.profile_host,
-    config.build_policy
-  )
-
-  -- Handle lockfile: use config.lockfile if specified, otherwise fall back to checking for conan.lock
-  if config.lockfile and config.lockfile ~= "" then
-    cmd = cmd .. " --lockfile " .. config.lockfile
-  elseif vim.loop.fs_stat(vim.fn.getcwd() .. "/conan.lock") ~= nil then
-    cmd = cmd .. " --lockfile conan.lock"
-  end
-
-  run_terminal_with_status("📦 Conan: install", cmd, "📦 Conan Install", true)
+  local argv = command_builder.install(config, resolve_lockfile(config))
+  run_terminal_with_status("📦 Conan: install", argv, "📦 Conan Install", true)
 end
 
 --- Runs `conan build` using config from `.nvim-conan.json`.
@@ -117,37 +114,8 @@ function M.build()
     return
   end
 
-  local options_str = ""
-  if config.options then
-    for k, v in pairs(config.options) do
-      options_str = options_str .. string.format('-o "%s=%s" ', k, v)
-    end
-  end
-
-  local conf_str = ""
-  if config.conf then
-    for k, v in pairs(config.conf) do
-      conf_str = conf_str .. string.format('-c "%s=%s" ', k, v)
-    end
-  end
-
-  local cmd = string.format(
-    "conan build %s -pr:b %s -pr:h %s --build=%s %s %s",
-    config.recipe or ".",
-    config.profile_build,
-    config.profile_host,
-    config.build_policy,
-    options_str,
-    conf_str
-  )
-
-  if config.lockfile and config.lockfile ~= "" then
-    cmd = cmd .. " --lockfile " .. config.lockfile
-  elseif vim.loop.fs_stat(vim.fn.getcwd() .. "/conan.lock") ~= nil then
-    cmd = cmd .. " --lockfile conan.lock"
-  end
-
-  run_terminal_with_status("🔨 Conan: build", cmd, "🔨 Conan Build", true, function(code)
+  local argv = command_builder.build(config, resolve_lockfile(config))
+  run_terminal_with_status("🔨 Conan: build", argv, "🔨 Conan Build", true, function(code)
     if code ~= 0 then
       return
     end
@@ -167,8 +135,8 @@ function M.lock()
     return
   end
 
-  local cmd = string.format("conan lock create %s", config.recipe or ".")
-  run_terminal_with_status("🔒 Conan: lock", cmd, "🔒 Conan Lock", true)
+  local argv = command_builder.lock(config)
+  run_terminal_with_status("🔒 Conan: lock", argv, "🔒 Conan Lock", true)
 end
 
 --- Runs `conan create` using config from `.nvim-conan.json`.
@@ -179,15 +147,8 @@ function M.create()
     return
   end
 
-  local cmd = string.format(
-    "conan create -pr:b %s -pr:h %s --build=%s %s",
-    config.profile_build,
-    config.profile_host,
-    config.build_policy,
-    config.recipe or "."
-  )
-
-  run_terminal_with_status("📦 Conan: create", cmd, "📦 Conan Create", true)
+  local argv = command_builder.create(config)
+  run_terminal_with_status("📦 Conan: create", argv, "📦 Conan Create", true)
 end
 
 --- Runs `conan export` for the current recipe.
@@ -202,16 +163,8 @@ function M.export(args)
     return
   end
 
-  local cmd = "conan export"
-  if user then
-    cmd = cmd .. " --user " .. user
-  end
-  if channel then
-    cmd = cmd .. " --channel " .. channel
-  end
-  cmd = cmd .. " " .. (config.recipe or ".")
-
-  run_terminal_with_status("📤 Conan: export", cmd, "📤 Conan Export", true)
+  local argv = command_builder.export(config, user, channel)
+  run_terminal_with_status("📤 Conan: export", argv, "📤 Conan Export", true)
 end
 
 --- Runs `conan export-pkg` for the current recipe.
@@ -226,16 +179,8 @@ function M.export_package(args)
     return
   end
 
-  local cmd = "conan export-pkg"
-  if user then
-    cmd = cmd .. string.format(" --user %s", user)
-  end
-  if channel then
-    cmd = cmd .. string.format(" --channel %s", channel)
-  end
-  cmd = cmd .. " " .. (config.recipe or ".")
-
-  run_terminal_with_status("📦 Conan: export-pkg", cmd, "📦 Conan Export-Pkg", true)
+  local argv = command_builder.export_package(config, user, channel)
+  run_terminal_with_status("📦 Conan: export-pkg", argv, "📦 Conan Export-Pkg", true)
 end
 
 -- -------------------------
@@ -483,11 +428,11 @@ function M.upload()
                   actions.close(ref_bufnr)
                   local ref = action_state.get_selected_entry()[1]
 
-                  local cmd = string.format("conan upload %s -r=%s --confirm", ref, remote)
+                  local argv = command_builder.upload(ref, remote)
 
                   run_terminal_with_status(
                     ("📤 Conan: upload %s → %s"):format(ref, remote),
-                    cmd,
+                    argv,
                     string.format("📦 Upload: %s → %s", ref, remote),
                     true
                   )

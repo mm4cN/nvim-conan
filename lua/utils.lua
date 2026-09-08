@@ -111,8 +111,11 @@ function M.check_version_compat(config_version, plugin_version)
   end
 end
 
-function M.open_floating_terminal(cmd, title, close_term, opts)
-  assert(type(cmd) == "string", "cmd must be a string")
+function M.open_floating_terminal(argv, title, close_term, opts)
+  assert(type(argv) == "table" and #argv > 0, "argv must be a non-empty table")
+  for index, argument in ipairs(argv) do
+    assert(type(argument) == "string", string.format("argv[%d] must be a string", index))
+  end
 
   opts = opts or {}
 
@@ -139,14 +142,14 @@ function M.open_floating_terminal(cmd, title, close_term, opts)
 
   local win, buf = open_right_panel()
 
-  vim.fn.termopen(cmd, {
+  vim.fn.termopen(argv, {
     on_exit = function(_, code, _)
       vim.schedule(function()
         if type(opts.on_exit) == "function" then
           pcall(opts.on_exit, code, {
             win = win,
             buf = buf,
-            cmd = cmd,
+            argv = argv,
             title = title,
           })
         end
