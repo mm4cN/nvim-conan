@@ -38,6 +38,7 @@ Before contributing, make sure the following tools are installed:
 - [Telescope.nvim](https://github.com/nvim-telescope/telescope.nvim): Required for interactive pickers
 - A working Python 3 provider for Neovim (check with :checkhealth)
 - A basic C/C++ toolchain for testing Conan builds locally
+- [StyLua](https://github.com/JohnnyMorganz/StyLua) for formatting checks
 
 You can install Telescope like so:
 
@@ -50,6 +51,26 @@ You can install Telescope like so:
 -----
 
 ## 🧪 Testing
+
+Install the test dependencies once, then run the headless Neovim test suite:
+
+```bash
+make deps
+make test
+```
+
+The tests use `mini.test` with real Telescope and Plenary checkouts in the ignored `.deps`
+directory. They do not require Conan credentials or network access after the dependencies are
+installed.
+
+Check or apply Lua formatting with:
+
+```bash
+make format-check
+make format
+```
+
+### Manual plugin testing
 
 To test plugin behavior:
 

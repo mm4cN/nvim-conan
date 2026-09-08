@@ -1,4 +1,6 @@
-if vim.g.loaded_nvim_conan then return end
+if vim.g.loaded_nvim_conan then
+  return
+end
 vim.g.loaded_nvim_conan = true
 
 local ok, mod = pcall(require, "conan")

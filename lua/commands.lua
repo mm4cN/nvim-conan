@@ -8,7 +8,7 @@
 --- - Telescope UI for `conan search` results
 ---
 --- Requirements:
---- - `utils.open_floating_terminal(cmd, title, close_term, opts)` supports `opts.on_exit(code, ctx?)`
+--- - `utils.open_floating_terminal(argv, title, close_term, opts)` supports `opts.on_exit(code, ctx?)`
 --- - `conan_status.start(text)` accepts optional text and renders it in statusline
 local M = {
   ---@private
@@ -23,6 +23,7 @@ local actions = require("telescope.actions")
 local action_state = require("telescope.actions.state")
 
 local conan_status = require("conan_status")
+local command_builder = require("conan.command_builder")
 
 --- Reads and decodes `conan-config.json` from cwd or `.vscode/` subdirectory.
 --- Returns nil on any error (missing file / invalid JSON / IO error).
@@ -30,33 +31,39 @@ local conan_status = require("conan_status")
 local function read_config()
   local utils = require("utils")
   local path = utils.find_config(vim.fn.getcwd())
-  if not path then return nil end
+  if not path then
+    return nil
+  end
 
   local ok, config = pcall(function()
     local file = io.open(path, "r")
-    if not file then return nil end
+    if not file then
+      return nil
+    end
     local content = file:read("*a")
     file:close()
     return vim.json.decode(content)
   end)
 
-  if not ok or config == nil then return nil end
+  if not ok or config == nil then
+    return nil
+  end
   return config
 end
 
---- Runs a shell command in a floating terminal and shows a busy spinner in statusline.
+--- Runs a command in a floating terminal and shows a busy spinner in statusline.
 --- Spinner stops when the terminal job exits (success or failure).
 ---
 --- This is the preferred runner for long-running Conan commands (install/build/etc.).
 ---@param text string Statusline text to show while the command runs.
----@param cmd string Shell command executed in the floating terminal.
+---@param argv string[] Command and arguments executed in the floating terminal.
 ---@param title string Floating window title.
 ---@param close_term boolean If true, closes terminal window automatically on exit code 0.
-local function run_terminal_with_status(text, cmd, title, close_term, on_exit)
+local function run_terminal_with_status(text, argv, title, close_term, on_exit)
   local utils = require("utils")
   conan_status.start(text)
 
-  utils.open_floating_terminal(cmd, title, close_term, {
+  utils.open_floating_terminal(argv, title, close_term, {
     on_exit = function(code)
       conan_status.stop()
 
@@ -69,6 +76,16 @@ local function run_terminal_with_status(text, cmd, title, close_term, on_exit)
       end
     end,
   })
+end
+
+local function resolve_lockfile(config)
+  if config.lockfile and config.lockfile ~= "" then
+    return config.lockfile
+  end
+  if vim.loop.fs_stat(vim.fn.getcwd() .. "/conan.lock") ~= nil then
+    return "conan.lock"
+  end
+  return nil
 end
 
 -- -------------------------
@@ -84,22 +101,8 @@ function M.install()
     return
   end
 
-  local cmd = string.format(
-    "conan install %s -pr:b %s -pr:h %s --build=%s",
-    config.recipe or ".",
-    config.profile_build,
-    config.profile_host,
-    config.build_policy
-  )
-
-  -- Handle lockfile: use config.lockfile if specified, otherwise fall back to checking for conan.lock
-  if config.lockfile and config.lockfile ~= "" then
-    cmd = cmd .. " --lockfile " .. config.lockfile
-  elseif vim.loop.fs_stat(vim.fn.getcwd() .. "/conan.lock") ~= nil then
-    cmd = cmd .. " --lockfile conan.lock"
-  end
-
-  run_terminal_with_status("📦 Conan: install", cmd, "📦 Conan Install", true)
+  local argv = command_builder.install(config, resolve_lockfile(config))
+  run_terminal_with_status("📦 Conan: install", argv, "📦 Conan Install", true)
 end
 
 --- Runs `conan build` using config from `.nvim-conan.json`.
@@ -111,50 +114,17 @@ function M.build()
     return
   end
 
-  local options_str = ""
-  if config.options then
-    for k, v in pairs(config.options) do
-      options_str = options_str .. string.format("-o \"%s=%s\" ", k, v)
+  local argv = command_builder.build(config, resolve_lockfile(config))
+  run_terminal_with_status("🔨 Conan: build", argv, "🔨 Conan Build", true, function(code)
+    if code ~= 0 then
+      return
     end
-  end
 
-  local conf_str = ""
-  if config.conf then
-    for k, v in pairs(config.conf) do
-      conf_str = conf_str .. string.format("-c \"%s=%s\" ", k, v)
+    local cc = require("utils").find_latest_compile_commands()
+    if cc then
+      require("utils").link_compile_commands(cc)
     end
-  end
-
-  local cmd = string.format(
-    "conan build %s -pr:b %s -pr:h %s --build=%s %s %s",
-    config.recipe or ".",
-    config.profile_build,
-    config.profile_host,
-    config.build_policy,
-    options_str,
-    conf_str
-  )
-
-  if config.lockfile and config.lockfile ~= "" then
-    cmd = cmd .. " --lockfile " .. config.lockfile
-  elseif vim.loop.fs_stat(vim.fn.getcwd() .. "/conan.lock") ~= nil then
-    cmd = cmd .. " --lockfile conan.lock"
-  end
-
-  run_terminal_with_status(
-    "🔨 Conan: build",
-    cmd,
-    "🔨 Conan Build",
-    true,
-    function(code)
-      if code ~= 0 then return end
-
-      local cc = require("utils").find_latest_compile_commands()
-      if cc then
-        require("utils").link_compile_commands(cc)
-      end
-    end
-  )
+  end)
 end
 
 --- Runs `conan lock create` using config from `.nvim-conan.json`.
@@ -165,8 +135,8 @@ function M.lock()
     return
   end
 
-  local cmd = string.format("conan lock create %s", config.recipe or ".")
-  run_terminal_with_status("🔒 Conan: lock", cmd, "🔒 Conan Lock", true)
+  local argv = command_builder.lock(config)
+  run_terminal_with_status("🔒 Conan: lock", argv, "🔒 Conan Lock", true)
 end
 
 --- Runs `conan create` using config from `.nvim-conan.json`.
@@ -177,15 +147,8 @@ function M.create()
     return
   end
 
-  local cmd = string.format(
-    "conan create -pr:b %s -pr:h %s --build=%s %s",
-    config.profile_build,
-    config.profile_host,
-    config.build_policy,
-    config.recipe or "."
-  )
-
-  run_terminal_with_status("📦 Conan: create", cmd, "📦 Conan Create", true)
+  local argv = command_builder.create(config)
+  run_terminal_with_status("📦 Conan: create", argv, "📦 Conan Create", true)
 end
 
 --- Runs `conan export` for the current recipe.
@@ -200,12 +163,8 @@ function M.export(args)
     return
   end
 
-  local cmd = "conan export"
-  if user then cmd = cmd .. " --user " .. user end
-  if channel then cmd = cmd .. " --channel " .. channel end
-  cmd = cmd .. " " .. (config.recipe or ".")
-
-  run_terminal_with_status("📤 Conan: export", cmd, "📤 Conan Export", true)
+  local argv = command_builder.export(config, user, channel)
+  run_terminal_with_status("📤 Conan: export", argv, "📤 Conan Export", true)
 end
 
 --- Runs `conan export-pkg` for the current recipe.
@@ -220,12 +179,8 @@ function M.export_package(args)
     return
   end
 
-  local cmd = "conan export-pkg"
-  if user then cmd = cmd .. string.format(" --user %s", user) end
-  if channel then cmd = cmd .. string.format(" --channel %s", channel) end
-  cmd = cmd .. " " .. (config.recipe or ".")
-
-  run_terminal_with_status("📦 Conan: export-pkg", cmd, "📦 Conan Export-Pkg", true)
+  local argv = command_builder.export_package(config, user, channel)
+  run_terminal_with_status("📦 Conan: export-pkg", argv, "📦 Conan Export-Pkg", true)
 end
 
 -- -------------------------
@@ -246,29 +201,25 @@ local function search_async(pattern, remote, on_finished)
   M._search_started = true
   conan_status.start("🔍 Conan: search " .. pattern)
 
-  vim.system(
-    { "conan", "search", pattern, "-r=" .. remote, "-f=json", "-v=quiet" },
-    { text = true },
-    function(res)
-      vim.schedule(function()
-        conan_status.stop()
-        M._search_started = false
+  vim.system({ "conan", "search", pattern, "-r=" .. remote, "-f=json", "-v=quiet" }, { text = true }, function(res)
+    vim.schedule(function()
+      conan_status.stop()
+      M._search_started = false
 
-        if res.code ~= 0 then
-          vim.notify(res.stderr or "Conan search failed", vim.log.levels.ERROR)
-          return
-        end
+      if res.code ~= 0 then
+        vim.notify(res.stderr or "Conan search failed", vim.log.levels.ERROR)
+        return
+      end
 
-        local ok, decoded = pcall(vim.json.decode, res.stdout)
-        if not ok then
-          vim.notify("JSON decode failed", vim.log.levels.ERROR)
-          return
-        end
+      local ok, decoded = pcall(vim.json.decode, res.stdout)
+      if not ok then
+        vim.notify("JSON decode failed", vim.log.levels.ERROR)
+        return
+      end
 
-        on_finished(decoded)
-      end)
-    end
-  )
+      on_finished(decoded)
+    end)
+  end)
 end
 
 --- Builds a reverse index from Conan search JSON:
@@ -339,77 +290,85 @@ local function open_search_picker(pattern, results)
     return
   end
 
-  pickers.new({}, {
-    prompt_title = ("Conan search: " .. pattern),
-    finder = finders.new_table({
-      results = refs,
-      entry_maker = function(ref)
-        local present = by_ref[ref] or {}
-        local cnt = 0
-        for _ in pairs(present) do cnt = cnt + 1 end
-        return {
-          value = ref,
-          ordinal = ref,
-          display = string.format("%-30s  (%d)", ref, cnt),
-          present = present,
-        }
-      end,
-    }),
-    sorter = conf.generic_sorter({}),
-    previewer = previewers.new_buffer_previewer({
-      define_preview = function(self, entry)
-        local lines = {}
-        table.insert(lines, ("Recipe: %s"):format(entry.value))
-        table.insert(lines, "")
-
-        for _, r in ipairs(all_remotes) do
-          local err = remote_errors[r]
-          if err then
-            table.insert(lines, ("  ⚠️  %s: %s"):format(r, err))
-          else
-            local ok = entry.present[r] == true
-            table.insert(lines, ("  %s  %s"):format(ok and "✅" or "—", r))
+  pickers
+    .new({}, {
+      prompt_title = ("Conan search: " .. pattern),
+      finder = finders.new_table({
+        results = refs,
+        entry_maker = function(ref)
+          local present = by_ref[ref] or {}
+          local cnt = 0
+          for _ in pairs(present) do
+            cnt = cnt + 1
           end
+          return {
+            value = ref,
+            ordinal = ref,
+            display = string.format("%-30s  (%d)", ref, cnt),
+            present = present,
+          }
+        end,
+      }),
+      sorter = conf.generic_sorter({}),
+      previewer = previewers.new_buffer_previewer({
+        define_preview = function(self, entry)
+          local lines = {}
+          table.insert(lines, ("Recipe: %s"):format(entry.value))
+          table.insert(lines, "")
+
+          for _, r in ipairs(all_remotes) do
+            local err = remote_errors[r]
+            if err then
+              table.insert(lines, ("  ⚠️  %s: %s"):format(r, err))
+            else
+              local ok = entry.present[r] == true
+              table.insert(lines, ("  %s  %s"):format(ok and "✅" or "—", r))
+            end
+          end
+
+          table.insert(lines, "")
+          table.insert(lines, "Actions:")
+          table.insert(lines, "  <Enter>  copy ref to clipboard")
+          table.insert(lines, "  <C-i>    insert ref at cursor")
+
+          vim.api.nvim_buf_set_lines(self.state.bufnr, 0, -1, false, lines)
+          vim.bo[self.state.bufnr].filetype = "markdown"
+        end,
+      }),
+      layout_strategy = "horizontal",
+      layout_config = {
+        preview_width = 0.50,
+        width = 0.95,
+        height = 0.80,
+      },
+      attach_mappings = function(prompt_bufnr, map)
+        local function get_entry()
+          return action_state.get_selected_entry()
         end
 
-        table.insert(lines, "")
-        table.insert(lines, "Actions:")
-        table.insert(lines, "  <Enter>  copy ref to clipboard")
-        table.insert(lines, "  <C-i>    insert ref at cursor")
+        actions.select_default:replace(function()
+          local e = get_entry()
+          actions.close(prompt_bufnr)
+          if not e or not e.value then
+            return
+          end
+          vim.fn.setreg("+", e.value)
+          vim.notify(("Copied: %s"):format(e.value), vim.log.levels.INFO)
+        end)
 
-        vim.api.nvim_buf_set_lines(self.state.bufnr, 0, -1, false, lines)
-        vim.bo[self.state.bufnr].filetype = "markdown"
+        map({ "i", "n" }, "<C-i>", function()
+          local e = get_entry()
+          actions.close(prompt_bufnr)
+          if not e or not e.value then
+            return
+          end
+          vim.api.nvim_put({ e.value }, "c", true, true)
+        end)
+
+        return true
       end,
-    }),
-    layout_strategy = "horizontal",
-    layout_config = {
-      preview_width = 0.50,
-      width = 0.95,
-      height = 0.80,
-    },
-    attach_mappings = function(prompt_bufnr, map)
-      local function get_entry()
-        return action_state.get_selected_entry()
-      end
-
-      actions.select_default:replace(function()
-        local e = get_entry()
-        actions.close(prompt_bufnr)
-        if not e or not e.value then return end
-        vim.fn.setreg("+", e.value)
-        vim.notify(("Copied: %s"):format(e.value), vim.log.levels.INFO)
-      end)
-
-      map({ "i", "n" }, "<C-i>", function()
-        local e = get_entry()
-        actions.close(prompt_bufnr)
-        if not e or not e.value then return end
-        vim.api.nvim_put({ e.value }, "c", true, true)
-      end)
-
-      return true
-    end,
-  }):find()
+    })
+    :find()
 end
 
 --- Entry point for `:Conan search <pattern> [remote]`
@@ -443,46 +402,50 @@ function M.upload()
     return
   end
 
-  pickers.new({}, {
-    prompt_title = "Select Conan Remote",
-    finder = finders.new_table { results = remotes },
-    sorter = conf.generic_sorter({}),
-    attach_mappings = function(prompt_bufnr)
-      actions.select_default:replace(function()
-        actions.close(prompt_bufnr)
-        local remote = action_state.get_selected_entry()[1]
+  pickers
+    .new({}, {
+      prompt_title = "Select Conan Remote",
+      finder = finders.new_table({ results = remotes }),
+      sorter = conf.generic_sorter({}),
+      attach_mappings = function(prompt_bufnr)
+        actions.select_default:replace(function()
+          actions.close(prompt_bufnr)
+          local remote = action_state.get_selected_entry()[1]
 
-        local refs = utils.get_cached_package_refs()
-        if #refs == 0 then
-          vim.notify("No cached Conan packages found", vim.log.levels.WARN)
-          return
-        end
+          local refs = utils.get_cached_package_refs()
+          if #refs == 0 then
+            vim.notify("No cached Conan packages found", vim.log.levels.WARN)
+            return
+          end
 
-        pickers.new({}, {
-          prompt_title = "Select Package Ref",
-          finder = finders.new_table { results = refs },
-          sorter = conf.generic_sorter({}),
-          attach_mappings = function(ref_bufnr)
-            actions.select_default:replace(function()
-              actions.close(ref_bufnr)
-              local ref = action_state.get_selected_entry()[1]
+          pickers
+            .new({}, {
+              prompt_title = "Select Package Ref",
+              finder = finders.new_table({ results = refs }),
+              sorter = conf.generic_sorter({}),
+              attach_mappings = function(ref_bufnr)
+                actions.select_default:replace(function()
+                  actions.close(ref_bufnr)
+                  local ref = action_state.get_selected_entry()[1]
 
-              local cmd = string.format("conan upload %s -r=%s --confirm", ref, remote)
+                  local argv = command_builder.upload(ref, remote)
 
-              run_terminal_with_status(
-                ("📤 Conan: upload %s → %s"):format(ref, remote),
-                cmd,
-                string.format("📦 Upload: %s → %s", ref, remote),
-                true
-              )
-            end)
-            return true
-          end,
-        }):find()
-      end)
-      return true
-    end,
-  }):find()
+                  run_terminal_with_status(
+                    ("📤 Conan: upload %s → %s"):format(ref, remote),
+                    argv,
+                    string.format("📦 Upload: %s → %s", ref, remote),
+                    true
+                  )
+                end)
+                return true
+              end,
+            })
+            :find()
+        end)
+        return true
+      end,
+    })
+    :find()
 end
 
 return M
