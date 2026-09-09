@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Reconfiguration now preserves the existing configuration when the wizard is cancelled or writing fails.
+- Existing `.vscode/conan-config.json` files are replaced in place instead of creating a second root-level configuration.
+
 ### Changed
 
 - Conan build policies are now optional. Automatic first-time setup leaves the policy unset, while

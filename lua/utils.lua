@@ -29,8 +29,12 @@ function M.write_json_file(path, tbl)
     return false
   end
 
-  file:write(M.encode_json(tbl, 0))
-  file:close()
+  local written = file:write(M.encode_json(tbl, 0))
+  local closed = file:close()
+  if not written or not closed then
+    vim.notify("❌ Failed to write " .. path, vim.log.levels.ERROR)
+    return false
+  end
   return true
 end
 
@@ -251,6 +255,7 @@ function M.pick_conan_profile(prompt, callback)
   local profiles = M.get_conan_profiles()
   if #profiles == 0 then
     vim.notify("No Conan profiles found", vim.log.levels.WARN)
+    callback(nil)
     return
   end
 
@@ -260,9 +265,19 @@ function M.pick_conan_profile(prompt, callback)
       finder = finders.new_table({ results = profiles }),
       sorter = conf.generic_sorter({}),
       attach_mappings = function(bufnr)
+        local finished = false
+        actions.close:enhance({
+          post = function()
+            if not finished then
+              finished = true
+              callback(nil)
+            end
+          end,
+        })
         actions.select_default:replace(function()
-          actions.close(bufnr)
           local selection = action_state.get_selected_entry()[1]
+          finished = true
+          actions.close(bufnr)
           callback(selection)
         end)
         return true
@@ -286,9 +301,19 @@ function M.pick_recipe(prompt, callback)
       finder = finders.new_table({ results = recipes }),
       sorter = conf.generic_sorter({}),
       attach_mappings = function(bufnr)
+        local finished = false
+        actions.close:enhance({
+          post = function()
+            if not finished then
+              finished = true
+              callback(nil)
+            end
+          end,
+        })
         actions.select_default:replace(function()
-          actions.close(bufnr)
           local selection = action_state.get_selected_entry()[1]
+          finished = true
+          actions.close(bufnr)
           callback(selection)
         end)
         return true
@@ -340,7 +365,9 @@ local function prompt_for(what, callback)
     vim.ui.input({
       prompt = "Enter " .. what .. " (key=value), enter with blank field to finish: ",
     }, function(input)
-      if input and input ~= "" then
+      if input == nil then
+        callback(nil)
+      elseif input ~= "" then
         local k, v = input:match("^%s*(.-)%s*=%s*(.-)%s*$")
         if k and v and k ~= "" and v ~= "" then
           options[k] = v
@@ -360,26 +387,93 @@ local function optional_build_policy(callback)
   vim.ui.input({
     prompt = "Build policy (optional; value after --build=, e.g. missing or missing:zlib/*): ",
   }, function(input)
-    if type(input) == "string" then
-      input = vim.trim(input)
+    if input == nil then
+      callback(nil)
+      return
     end
-    callback(input ~= "" and input or nil)
+    callback(vim.trim(input))
   end)
+end
+
+local function replace_config(path, config)
+  local fd, temp_path, temp_error = vim.loop.fs_mkstemp(path .. ".tmp.XXXXXX")
+  if not fd then
+    vim.notify("❌ Failed to create temporary config: " .. tostring(temp_error), vim.log.levels.ERROR)
+    return false
+  end
+  local closed, close_error = vim.loop.fs_close(fd)
+  if not closed then
+    vim.loop.fs_unlink(temp_path)
+    vim.notify("❌ Failed to close temporary config: " .. tostring(close_error), vim.log.levels.ERROR)
+    return false
+  end
+
+  local write_ok, written = pcall(M.write_json_file, temp_path, config)
+  if not write_ok or not written then
+    vim.loop.fs_unlink(temp_path)
+    vim.notify("❌ Failed to write temporary config", vim.log.levels.ERROR)
+    return false
+  end
+
+  local replaced, replace_error = vim.loop.fs_rename(temp_path, path)
+  if not replaced then
+    vim.loop.fs_unlink(temp_path)
+    vim.notify("❌ Failed to replace config: " .. tostring(replace_error), vim.log.levels.ERROR)
+    return false
+  end
+
+  return true
 end
 
 local function configure(configuration_options)
   local version = require("version")
-  local config_path = conan_config_abspath()
+  local config_path = configuration_options.config_path or conan_config_abspath()
+  local cancelled = false
+
+  local function cancel_configuration()
+    if not cancelled then
+      cancelled = true
+      vim.notify("⚠️ Configuration cancelled", vim.log.levels.INFO)
+    end
+  end
 
   M.pick_recipe("Select Conan Recipe", function(recipe)
+    if recipe == nil then
+      cancel_configuration()
+      return
+    end
     M.pick_conan_profile("Select Host Profile", function(host_profile)
+      if host_profile == nil then
+        cancel_configuration()
+        return
+      end
       M.pick_conan_profile("Select Build Profile", function(build_profile)
+        if build_profile == nil then
+          cancel_configuration()
+          return
+        end
         local function finish_configuration(build_policy)
+          if build_policy == nil then
+            cancel_configuration()
+            return
+          end
           prompt_for("options", function(options)
+            if options == nil then
+              cancel_configuration()
+              return
+            end
             prompt_for("conf", function(conf)
+              if conf == nil then
+                cancel_configuration()
+                return
+              end
               vim.ui.input({
                 prompt = "Enter lockfile path (optional): ",
               }, function(lockfile)
+                if lockfile == nil then
+                  cancel_configuration()
+                  return
+                end
                 local config_tbl = {
                   recipe = recipe,
                   version = version,
@@ -389,41 +483,28 @@ local function configure(configuration_options)
                   conf = conf or {},
                 }
 
-                if build_policy then
+                if build_policy ~= "" then
                   config_tbl.build_policy = build_policy
                 end
 
-                if lockfile and lockfile ~= "" then
+                if lockfile ~= "" then
                   config_tbl.lockfile = lockfile
                 end
 
-                M.ensure_config(config_path, config_tbl)
+                if not replace_config(config_path, config_tbl) then
+                  return
+                end
 
                 vim.notify(
                   string.format(
                     "🎯 Configured with host: %s, build: %s%s",
                     host_profile,
                     build_profile,
-                    build_policy and ", policy: " .. build_policy or ""
+                    build_policy ~= "" and ", policy: " .. build_policy or ""
                   ),
                   vim.log.levels.INFO
                 )
-
-                local ok, config = pcall(function()
-                  local file = io.open(config_path, "r")
-                  if not file then
-                    return nil
-                  end
-                  local content = file:read("*a")
-                  file:close()
-                  return vim.json.decode(content)
-                end)
-
-                if ok and config then
-                  M.check_version_compat(config.version, version)
-                else
-                  vim.notify("⚠️ Failed to read config after reconfigure", vim.log.levels.WARN)
-                end
+                M.check_version_compat(config_tbl.version, version)
               end)
             end)
           end)
@@ -432,7 +513,7 @@ local function configure(configuration_options)
         if configuration_options.prompt_for_build_policy then
           optional_build_policy(finish_configuration)
         else
-          finish_configuration(nil)
+          finish_configuration("")
         end
       end)
     end)
@@ -445,13 +526,8 @@ function M.configure()
 end
 
 function M.reconfigure()
-  local config_path = conan_config_abspath()
-  if M.file_exists(config_path) then
-    vim.loop.fs_unlink(config_path)
-    vim.notify("✅ Removed old config", vim.log.levels.INFO)
-  end
-
-  local configuration_options = { prompt_for_build_policy = true }
+  local config_path = M.find_config(vim.fn.getcwd()) or conan_config_abspath()
+  local configuration_options = { prompt_for_build_policy = true, config_path = config_path }
   configure(configuration_options)
 end
 
