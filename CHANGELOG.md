@@ -7,33 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [4.0.0] - 2026-09-09
+
 ### Breaking Changes
 
-- `:Conan export` and `:Conan export_package` no longer interpret positional `[user] [channel]`
-  values or rewrite them as flags. Both now use `[args...]` syntax and forward arguments literally
-  after the configured recipe. Replace `:Conan export alice stable` with
-  `:Conan export --user=alice --channel=stable` (and likewise for `export_package`).
+- `:Conan export alice stable` and `:Conan export_package alice stable` are no longer rewritten as
+  user/channel flags. Use `:Conan export --user=alice --channel=stable` and
+  `:Conan export_package --user=alice --channel=stable` instead.
 
 ### Added
 
-- `:Conan create [args...]` now forwards arbitrary additional arguments directly to Conan after
-  the configured recipe, profiles, and optional build policy.
-
-### Fixed
-
-- Reconfiguration now preserves the existing configuration when the wizard is cancelled or writing fails.
-- Existing `.vscode/conan-config.json` files are replaced in place instead of creating a second root-level configuration.
+- `:Conan create [args...]`, `:Conan export [args...]`, and `:Conan export_package [args...]` now
+  accept additional Conan arguments. They are appended after the create recipe, profiles, and
+  optional build policy, or after the export recipe. Their order is preserved and each remains a
+  literal argv element without shell interpretation.
 
 ### Changed
 
-- Conan build policies are now optional. Automatic first-time setup leaves the policy unset, while
-  `:Conan reconfigure` accepts an optional free-form value such as `missing:zlib/*`.
-- Conan commands omit `--build` when no nonblank `build_policy` is configured; existing configured
-  policies remain supported.
+- Conan build policies are optional. Automatic first-time configuration leaves `build_policy`
+  unset, while `:Conan reconfigure` accepts an optional free-form value such as
+  `missing:zlib/*`. Missing, empty, or blank values omit `--build`; configured values remain
+  supported.
+
+### Fixed
+
+- Reconfiguration preserves the existing configuration when the wizard is cancelled or writing
+  fails.
+- Existing `.vscode/conan-config.json` files are safely replaced in place instead of creating a
+  second root-level configuration.
+- Failed command terminals remain open and leave Terminal mode so their output can be inspected.
 
 ## [3.0.0] - 2026-08-13
 ### Breaking Changes
-- Config file renamed from `.nvim-conan.json` to `conan-config.json`. Existing config files must be renamed manually.
+- The legacy `.nvim-conan.json` filename was replaced by the supported `conan-config.json` name.
+  Existing legacy files must be renamed manually.
 - Plugin entry point ported from `plugin/conan.vim` to `plugin/conan.lua`.
 
 ### Added

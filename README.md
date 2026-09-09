@@ -1,6 +1,12 @@
 # 🌿 nvim-conan
 
-A Lua-crafted bridge between Neovim and Conan, the C/C++ package manager.
+<p align="center">
+  <img src="assets/icon.png" alt="nvim-conan logo" width="240">
+</p>
+
+<p align="center">
+  A Lua-crafted bridge between Neovim and Conan, the C/C++ package manager.
+</p>
 
 ---
 
@@ -27,8 +33,7 @@ A Lua-crafted bridge between Neovim and Conan, the C/C++ package manager.
   No Python wrappers. No frills. Pure Lua.
 
 - 🛡️ **Safe Command Execution**
-  Conan commands are passed as argument lists, so paths and values containing spaces or shell
-  metacharacters remain literal arguments.
+  Conan commands are passed as argument lists rather than shell command strings.
 
 ---
 
@@ -57,35 +62,40 @@ require("conan").setup()
 
 This checks whether Conan is available, bootstraps config files, and provides `:Conan` commands.
 
-On first use in a Conan project, an interactive wizard creates a `conan-config.json` in your project root. The plugin also recognises `conan-config.json` placed inside a `.vscode/` subdirectory, so teams that already keep per-project settings there don't need a duplicate file.
+On first use in a Conan project, an interactive wizard creates `conan-config.json` in the project
+root. The plugin also recognises `.vscode/conan-config.json`, so teams that keep project settings
+there do not need a duplicate file.
 
-The first-time wizard leaves Conan's optional build policy unset. Running `:Conan reconfigure`
-offers a free-form optional input for the value following `--build=` (for example, `missing` or
-`missing:zlib/*`). Leaving it empty preserves Conan's default behavior; when configured, the value
-is stored as `build_policy` and commands append it as `--build=<value>`.
+The automatic first-time configuration leaves Conan's optional `build_policy` unset.
+`:Conan reconfigure` accepts a free-form optional value such as `missing` or `missing:zlib/*`.
+A missing, empty, or blank value omits `--build`; otherwise, `install`, `build`, and `create`
+include `--build=<value>`.
 
-Package the configured recipe with optional additional Conan arguments:
+Create and export commands accept additional Conan arguments:
 
 ```vim
 :Conan create [args...]
 :Conan create --version=1.2.3
-```
-
-All arguments following `create` are passed directly to Conan, in their original order, after the
-configured recipe, profiles, and optional build policy.
-
-Export commands use the same direct argument-passthrough model:
-
-```vim
 :Conan export [args...]
 :Conan export --user=alice --channel=stable
 :Conan export_package [args...]
 :Conan export_package --output-folder=build/package --user=alice --channel=stable
 ```
 
-Arguments following either export subcommand are passed directly to Conan, in their original order,
-after the configured recipe. This is a breaking change: positional `[user] [channel]` values are no
-longer converted into Conan flags. Use explicit arguments such as `--user=alice --channel=stable`.
+They generate argv in this order:
+
+```text
+conan create [recipe] [profiles] [optional build policy] [args...]
+conan export [recipe] [args...]
+conan export-pkg [recipe] [args...]
+```
+
+Additional arguments retain their original order, remain separate literal argv elements, and are
+passed directly to Conan without shell interpretation.
+
+This is a breaking change for exports: `:Conan export alice stable` and
+`:Conan export_package alice stable` are no longer rewritten as user/channel flags. Pass explicit
+Conan flags instead, as shown in the examples above.
 
 -------
 
