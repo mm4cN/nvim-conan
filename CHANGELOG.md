@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Breaking Changes
+
+- `:Conan export` and `:Conan export_package` no longer interpret positional `[user] [channel]`
+  values or rewrite them as flags. Both now use `[args...]` syntax and forward arguments literally
+  after the configured recipe. Replace `:Conan export alice stable` with
+  `:Conan export --user=alice --channel=stable` (and likewise for `export_package`).
+
 ### Added
 
 - `:Conan create [args...]` now forwards arbitrary additional arguments directly to Conan after

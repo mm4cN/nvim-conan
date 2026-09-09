@@ -240,28 +240,65 @@ test_set["create omits missing, empty, and blank build policies"] = function()
   end
 end
 
-test_set["export includes user and channel before the recipe"] = function()
-  expect.equality(command_builder.export(config, "alice", "stable"), {
-    "conan",
-    "export",
-    "--user",
-    "alice",
-    "--channel",
-    "stable",
-    "recipes/conanfile.py",
-  })
-end
+local export_commands = {
+  { name = "export", executable_subcommand = "export", build = command_builder.export },
+  { name = "export_package", executable_subcommand = "export-pkg", build = command_builder.export_package },
+}
 
-test_set["export-package includes user and channel before the recipe"] = function()
-  expect.equality(command_builder.export_package(config, "alice", "testing"), {
-    "conan",
-    "export-pkg",
-    "--user",
-    "alice",
-    "--channel",
-    "testing",
-    "recipes/conanfile.py",
-  })
+for _, command in ipairs(export_commands) do
+  test_set[command.name .. " places the recipe immediately after the subcommand without additional arguments"] = function()
+    local expected = { "conan", command.executable_subcommand, "recipes/conanfile.py" }
+
+    expect.equality(command.build(config, {}), expected)
+    expect.equality(command.build(config, nil), expected)
+  end
+
+  test_set[command.name .. " appends one additional argument after the recipe"] = function()
+    expect.equality(command.build(config, { "--user=alice" }), {
+      "conan",
+      command.executable_subcommand,
+      "recipes/conanfile.py",
+      "--user=alice",
+    })
+  end
+
+  test_set[command.name .. " preserves multiple additional arguments in order"] = function()
+    expect.equality(
+      command.build(config, {
+        "--version=1.2.3",
+        "--user=alice",
+        "--channel=stable",
+      }),
+      {
+        "conan",
+        command.executable_subcommand,
+        "recipes/conanfile.py",
+        "--version=1.2.3",
+        "--user=alice",
+        "--channel=stable",
+      }
+    )
+  end
+
+  test_set[command.name .. " preserves literal arguments and does not rewrite positional values"] = function()
+    expect.equality(
+      command.build(config, {
+        "value with spaces",
+        "$(touch unsafe);&|*",
+        "alice",
+        "stable",
+      }),
+      {
+        "conan",
+        command.executable_subcommand,
+        "recipes/conanfile.py",
+        "value with spaces",
+        "$(touch unsafe);&|*",
+        "alice",
+        "stable",
+      }
+    )
+  end
 end
 
 test_set["upload includes the selected reference and remote"] = function()

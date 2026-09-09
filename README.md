@@ -74,6 +74,19 @@ Package the configured recipe with optional additional Conan arguments:
 All arguments following `create` are passed directly to Conan, in their original order, after the
 configured recipe, profiles, and optional build policy.
 
+Export commands use the same direct argument-passthrough model:
+
+```vim
+:Conan export [args...]
+:Conan export --user=alice --channel=stable
+:Conan export_package [args...]
+:Conan export_package --output-folder=build/package --user=alice --channel=stable
+```
+
+Arguments following either export subcommand are passed directly to Conan, in their original order,
+after the configured recipe. This is a breaking change: positional `[user] [channel]` values are no
+longer converted into Conan flags. Use explicit arguments such as `--user=alice --channel=stable`.
+
 -------
 
 # 📋 Requirements

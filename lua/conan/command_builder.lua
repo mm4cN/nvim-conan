@@ -80,27 +80,19 @@ function M.create(config, additional_args)
   return argv
 end
 
-function M.export(config, user, channel)
-  local argv = { "conan", "export" }
-  if user then
-    append(argv, "--user", user)
+function M.export(config, additional_args)
+  local argv = { "conan", "export", config.recipe or "." }
+  for _, argument in ipairs(additional_args or {}) do
+    append(argv, argument)
   end
-  if channel then
-    append(argv, "--channel", channel)
-  end
-  append(argv, config.recipe or ".")
   return argv
 end
 
-function M.export_package(config, user, channel)
-  local argv = { "conan", "export-pkg" }
-  if user then
-    append(argv, "--user", user)
+function M.export_package(config, additional_args)
+  local argv = { "conan", "export-pkg", config.recipe or "." }
+  for _, argument in ipairs(additional_args or {}) do
+    append(argv, argument)
   end
-  if channel then
-    append(argv, "--channel", channel)
-  end
-  append(argv, config.recipe or ".")
   return argv
 end
 
