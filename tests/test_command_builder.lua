@@ -144,31 +144,100 @@ test_set["lock uses the configured recipe"] = function()
   })
 end
 
-test_set["create preserves profile and recipe ordering"] = function()
+test_set["create without additional arguments preserves existing configured arguments"] = function()
   expect.equality(command_builder.create(config), {
     "conan",
     "create",
+    "recipes/conanfile.py",
     "-pr:b",
     "build-profile",
     "-pr:h",
     "host-profile",
     "--build=missing",
-    "recipes/conanfile.py",
   })
 end
 
-test_set["create omits a blank build policy without changing argument ordering"] = function()
-  local create_config = vim.tbl_extend("force", config, { build_policy = " \t" })
-
-  expect.equality(command_builder.create(create_config), {
+test_set["create forwards a version argument after configured arguments"] = function()
+  expect.equality(command_builder.create(config, { "--version=1.0.0" }), {
     "conan",
     "create",
+    "recipes/conanfile.py",
     "-pr:b",
     "build-profile",
     "-pr:h",
     "host-profile",
-    "recipes/conanfile.py",
+    "--build=missing",
+    "--version=1.0.0",
   })
+end
+
+test_set["create preserves multiple additional arguments in their original order"] = function()
+  expect.equality(
+    command_builder.create(config, {
+      "--version=1.2.3",
+      "--user=alice",
+      "--channel=testing",
+    }),
+    {
+      "conan",
+      "create",
+      "recipes/conanfile.py",
+      "-pr:b",
+      "build-profile",
+      "-pr:h",
+      "host-profile",
+      "--build=missing",
+      "--version=1.2.3",
+      "--user=alice",
+      "--channel=testing",
+    }
+  )
+end
+
+test_set["create preserves spaces and shell metacharacters as literal arguments"] = function()
+  expect.equality(
+    command_builder.create(config, {
+      "value with spaces",
+      "$(touch unsafe);&|*",
+    }),
+    {
+      "conan",
+      "create",
+      "recipes/conanfile.py",
+      "-pr:b",
+      "build-profile",
+      "-pr:h",
+      "host-profile",
+      "--build=missing",
+      "value with spaces",
+      "$(touch unsafe);&|*",
+    }
+  )
+end
+
+test_set["create omits missing, empty, and blank build policies"] = function()
+  local configs = {
+    {
+      recipe = config.recipe,
+      profile_build = config.profile_build,
+      profile_host = config.profile_host,
+    },
+    vim.tbl_extend("force", config, { build_policy = "" }),
+    vim.tbl_extend("force", config, { build_policy = " \t" }),
+  }
+
+  for _, create_config in ipairs(configs) do
+    expect.equality(command_builder.create(create_config, { "--version=1.0.0" }), {
+      "conan",
+      "create",
+      "recipes/conanfile.py",
+      "-pr:b",
+      "build-profile",
+      "-pr:h",
+      "host-profile",
+      "--version=1.0.0",
+    })
+  end
 end
 
 test_set["export includes user and channel before the recipe"] = function()

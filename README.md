@@ -64,6 +64,16 @@ offers a free-form optional input for the value following `--build=` (for exampl
 `missing:zlib/*`). Leaving it empty preserves Conan's default behavior; when configured, the value
 is stored as `build_policy` and commands append it as `--build=<value>`.
 
+Package the configured recipe with optional additional Conan arguments:
+
+```vim
+:Conan create [args...]
+:Conan create --version=1.2.3
+```
+
+All arguments following `create` are passed directly to Conan, in their original order, after the
+configured recipe, profiles, and optional build policy.
+
 -------
 
 # 📋 Requirements

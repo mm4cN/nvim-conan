@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- `:Conan create [args...]` now forwards arbitrary additional arguments directly to Conan after
+  the configured recipe, profiles, and optional build policy.
+
 ### Fixed
 
 - Reconfiguration now preserves the existing configuration when the wizard is cancelled or writing fails.
