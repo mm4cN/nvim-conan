@@ -78,11 +78,20 @@ Available subcommands:
       :Conan create --version=1.2.3
 <
 
-`export [user] [channel]`
-    Run `conan export` for the configured recipe.
+`:Conan export [args...]`
+    Run `conan export` for the configured recipe. Remaining arguments are
+    passed directly to Conan after the recipe. For example: >
+      :Conan export --user=alice --channel=stable
+<
 
-`export_package [user] [channel]`
-    Run `conan export-pkg` for the configured recipe.
+`:Conan export_package [args...]`
+    Run `conan export-pkg` for the configured recipe. Remaining arguments are
+    passed directly to Conan after the recipe. For example: >
+      :Conan export_package --output-folder=build/package --user=alice --channel=stable
+<
+    BREAKING CHANGE: positional `[user] [channel]` values are no longer
+    interpreted or converted into flags. Pass explicit Conan arguments such
+    as `--user=alice --channel=stable` instead.
 
 `search {pattern} [remote]`
     Search Conan packages asynchronously and open Telescope results. Press

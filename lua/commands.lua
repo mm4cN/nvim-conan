@@ -153,26 +153,21 @@ function M.create(args)
 end
 
 --- Runs `conan export` for the current recipe.
----@param args string[] CLI-like args: {user?, channel?}
+---@param args string[]|nil Additional arguments passed directly to `conan export`.
 function M.export(args)
-  local user = args[1]
-  local channel = args[2]
-
   local config = read_config()
   if config == nil then
     vim.notify("Couldn't read config", vim.log.levels.ERROR)
     return
   end
 
-  local argv = command_builder.export(config, user, channel)
+  local argv = command_builder.export(config, args)
   run_terminal_with_status("📤 Conan: export", argv, "📤 Conan Export", true)
 end
 
 --- Runs `conan export-pkg` for the current recipe.
----@param args string[] CLI-like args: {user?, channel?}
+---@param args string[]|nil Additional arguments passed directly to `conan export-pkg`.
 function M.export_package(args)
-  local user = args[1]
-  local channel = args[2]
   local config = read_config()
 
   if config == nil then
@@ -180,7 +175,7 @@ function M.export_package(args)
     return
   end
 
-  local argv = command_builder.export_package(config, user, channel)
+  local argv = command_builder.export_package(config, args)
   run_terminal_with_status("📦 Conan: export-pkg", argv, "📦 Conan Export-Pkg", true)
 end
 
