@@ -71,8 +71,12 @@ Available subcommands:
 `lock`
     Run `conan lock create` for the configured recipe.
 
-`create`
-    Run `conan create`.
+`:Conan create [args...]`
+    Run `conan create` for the configured recipe. Remaining arguments are
+    passed directly to Conan, after the configured profiles and optional build
+    policy. For example: >
+      :Conan create --version=1.2.3
+<
 
 `export [user] [channel]`
     Run `conan export` for the configured recipe.

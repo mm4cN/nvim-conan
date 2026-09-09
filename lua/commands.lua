@@ -92,7 +92,7 @@ end
 -- Conan commands (terminal)
 -- -------------------------
 
---- Runs `conan install` using config from `.nvim-conan.json`.
+--- Runs `conan install` using config file.
 --- Opens a floating terminal and shows statusline spinner until the command finishes.
 function M.install()
   local config = read_config()
@@ -105,7 +105,7 @@ function M.install()
   run_terminal_with_status("📦 Conan: install", argv, "📦 Conan Install", true)
 end
 
---- Runs `conan build` using config from `.nvim-conan.json`.
+--- Runs `conan build` using config file.
 --- Also attempts to symlink `compile_commands.json` into project root if it can be located.
 function M.build()
   local config = read_config()
@@ -127,7 +127,7 @@ function M.build()
   end)
 end
 
---- Runs `conan lock create` using config from `.nvim-conan.json`.
+--- Runs `conan lock create` using config file.
 function M.lock()
   local config = read_config()
   if config == nil then
@@ -139,15 +139,16 @@ function M.lock()
   run_terminal_with_status("🔒 Conan: lock", argv, "🔒 Conan Lock", true)
 end
 
---- Runs `conan create` using config from `.nvim-conan.json`.
-function M.create()
+--- Runs `conan create` using config file.
+---@param args string[]|nil Additional arguments passed directly to `conan create`.
+function M.create(args)
   local config = read_config()
   if config == nil then
     vim.notify("Couldn't read config", vim.log.levels.ERROR)
     return
   end
 
-  local argv = command_builder.create(config)
+  local argv = command_builder.create(config, args)
   run_terminal_with_status("📦 Conan: create", argv, "📦 Conan Create", true)
 end
 

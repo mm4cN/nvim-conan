@@ -70,11 +70,13 @@ function M.lock(config)
   return { "conan", "lock", "create", config.recipe or "." }
 end
 
-function M.create(config)
-  local argv = { "conan", "create" }
+function M.create(config, additional_args)
+  local argv = { "conan", "create", config.recipe or "." }
   append_profiles(argv, config)
   append_build_policy(argv, config)
-  append(argv, config.recipe or ".")
+  for _, argument in ipairs(additional_args or {}) do
+    append(argv, argument)
+  end
   return argv
 end
 

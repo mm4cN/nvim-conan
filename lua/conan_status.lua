@@ -14,7 +14,8 @@ local function in_conan_project()
   local cwd = vim.fn.getcwd()
   return exists(cwd .. "/conanfile.py")
     or exists(cwd .. "/conanfile.txt")
-    or exists(cwd .. "/.nvim-conan.json")
+    or exists(cwd .. "/conan-config.json")
+    or exists(cwd .. "/.vscode/conan-config.json")
     or exists(cwd .. "/conan.lock")
 end
 
