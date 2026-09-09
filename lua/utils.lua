@@ -162,6 +162,15 @@ function M.open_floating_terminal(argv, title, close_term, opts)
           if vim.api.nvim_win_is_valid(win) then
             vim.api.nvim_win_close(win, true)
           end
+        elseif
+          code ~= 0
+          and vim.api.nvim_win_is_valid(win)
+          and vim.api.nvim_buf_is_valid(buf)
+          and vim.api.nvim_win_get_buf(win) == buf
+          and vim.api.nvim_get_current_win() == win
+          and vim.api.nvim_get_mode().mode:sub(1, 1) == "t"
+        then
+          vim.api.nvim_feedkeys(vim.keycode("<C-\\><C-N>"), "n", false)
         end
       end)
     end,
