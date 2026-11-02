@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Conan search results can be appended directly to a configured Python recipe with separate
+  mappings for `self.requires(...)` and `self.tool_requires(...)`. Missing `requirements()` or
+  `build_requirements()` methods are created automatically, while malformed or ambiguous recipes
+  are left unchanged.
+
 ## [4.0.0] - 2026-09-09
 
 ### Breaking Changes

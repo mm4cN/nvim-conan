@@ -109,6 +109,14 @@ flags. Use explicit Conan flags instead: >
     Search Conan packages asynchronously and open Telescope results. Press
     <Enter> in the picker to copy a reference, or <C-i> to insert it.
 
+    When the project configuration selects an existing Python recipe, two
+    additional mappings are available:
+      <C-r>  append self.requires(...) to requirements()
+      <C-t>  append self.tool_requires(...) to build_requirements()
+
+    A missing target method is created at the end of the ConanFile class.
+    Ambiguous or malformed recipe structures are not modified.
+
 `upload`
     Pick a remote and a cached reference with Telescope, then run
     `conan upload ... --confirm`.

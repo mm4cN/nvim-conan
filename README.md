@@ -27,7 +27,8 @@
   - `upload`: Upload recipes to remotes (with **Telescope-powered** remote and ref selection!)
 
 - 🔭 **Telescope Integration**  
-  Intuitive fuzzy-pickers for selecting remotes and cached packages before upload.
+  Intuitive fuzzy-pickers for selecting remotes and cached packages before upload. Search results
+  can also be added directly to a configured Python recipe.
 
 - ⚡ **Neovim Native**  
   No Python wrappers. No frills. Pure Lua.
@@ -92,6 +93,18 @@ conan export-pkg [recipe] [args...]
 
 Additional arguments retain their original order, remain separate literal argv elements, and are
 passed directly to Conan without shell interpretation.
+
+In the `:Conan search` results, a selected package reference can be added to the configured Python
+recipe with:
+
+```text
+<C-r>  append self.requires(...) to requirements()
+<C-t>  append self.tool_requires(...) to build_requirements()
+```
+
+If the target method does not exist, it is created at the end of the `ConanFile` class. These
+bindings are available only when `conan-config.json` selects an existing `.py` recipe. Ambiguous or
+malformed recipe structures are left unchanged and reported as errors.
 
 This is a breaking change for exports: `:Conan export alice stable` and
 `:Conan export_package alice stable` are no longer rewritten as user/channel flags. Pass explicit

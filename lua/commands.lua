@@ -24,6 +24,7 @@ local action_state = require("telescope.actions.state")
 
 local conan_status = require("conan_status")
 local command_builder = require("conan.command_builder")
+local recipe_editor = require("conan.recipe_editor")
 
 --- Reads and decodes `conan-config.json` from cwd or `.vscode/` subdirectory.
 --- Returns nil on any error (missing file / invalid JSON / IO error).
@@ -262,6 +263,7 @@ end
 ---@param results table
 local function open_search_picker(pattern, results)
   local refs, by_ref, all_remotes, remote_errors = build_index(results)
+  local recipe_path = recipe_editor.resolve_configured_recipe(read_config(), vim.fn.getcwd())
 
   if #refs == 0 then
     local any_error = false
@@ -326,6 +328,10 @@ local function open_search_picker(pattern, results)
           table.insert(lines, "Actions:")
           table.insert(lines, "  <Enter>  copy ref to clipboard")
           table.insert(lines, "  <C-i>    insert ref at cursor")
+          if recipe_path then
+            table.insert(lines, "  <C-r>    add to requirements")
+            table.insert(lines, "  <C-t>    add to build_requirements")
+          end
 
           vim.api.nvim_buf_set_lines(self.state.bufnr, 0, -1, false, lines)
           vim.bo[self.state.bufnr].filetype = "markdown"
@@ -360,6 +366,40 @@ local function open_search_picker(pattern, results)
           end
           vim.api.nvim_put({ e.value }, "c", true, true)
         end)
+
+        local function add_to_recipe(method_name)
+          local e = get_entry()
+          actions.close(prompt_bufnr)
+          if not e or not e.value then
+            return
+          end
+
+          local call_ok, result, update_error = pcall(recipe_editor.update, recipe_path, e.value, method_name)
+          if not call_ok then
+            vim.notify("Could not update Conan recipe: " .. tostring(result), vim.log.levels.ERROR)
+            return
+          end
+          if not result then
+            vim.notify("Could not update Conan recipe: " .. tostring(update_error), vim.log.levels.ERROR)
+            return
+          end
+          if result.already_present then
+            vim.notify(e.value .. " is already present in " .. method_name, vim.log.levels.INFO)
+            return
+          end
+
+          local location = result.location == "buffer" and " (unsaved buffer)" or ""
+          vim.notify("Added " .. e.value .. " to " .. method_name .. location, vim.log.levels.INFO)
+        end
+
+        if recipe_path then
+          map({ "i", "n" }, "<C-r>", function()
+            add_to_recipe("requirements")
+          end)
+          map({ "i", "n" }, "<C-t>", function()
+            add_to_recipe("build_requirements")
+          end)
+        end
 
         return true
       end,
