@@ -100,6 +100,7 @@ recipe with:
 ```text
 <C-r>  append self.requires(...) to requirements()
 <C-t>  append self.tool_requires(...) to build_requirements()
+<C-o>  add resolved dependency options to default_options
 ```
 
 If the target method does not exist, it is created at the end of the `ConanFile` class. These
@@ -108,6 +109,8 @@ malformed recipe structures are left unchanged and reported as errors.
 
 The search preview resolves the selected reference with `conan graph info` and displays its current
 option values below the remote availability list. Results are cached while the picker remains open.
+`<C-o>` stores missing values as dependency patterns such as `"zlib/*:shared": False`. Existing
+values are preserved, and `default_options` is placed immediately before the first recipe method.
 
 This is a breaking change for exports: `:Conan export alice stable` and
 `:Conan export_package alice stable` are no longer rewritten as user/channel flags. Pass explicit

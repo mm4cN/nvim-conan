@@ -117,9 +117,12 @@ flags. Use explicit Conan flags instead: >
     additional mappings are available:
       <C-r>  append self.requires(...) to requirements()
       <C-t>  append self.tool_requires(...) to build_requirements()
+      <C-o>  add resolved dependency options to default_options
 
     A missing target method is created at the end of the ConanFile class.
     Ambiguous or malformed recipe structures are not modified.
+    <C-o> preserves existing default option values and places default_options
+    immediately before the first recipe method.
 
 `upload`
     Pick a remote and a cached reference with Telescope, then run

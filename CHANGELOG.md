@@ -14,7 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   `build_requirements()` methods are created automatically, while malformed or ambiguous recipes
   are left unchanged.
 - The Conan search preview displays current option values resolved for the selected reference with
-  `conan graph info`.
+  `conan graph info`. `<C-o>` can add missing dependency values to the Python recipe's
+  `default_options` dictionary without overwriting existing values.
 
 ## [4.0.0] - 2026-09-09
 

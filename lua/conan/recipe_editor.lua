@@ -306,6 +306,336 @@ function M.add(source, reference, method_name)
     }
 end
 
+local function python_string(value)
+  value = tostring(value)
+  value = value:gsub("\\", "\\\\"):gsub('"', '\\"'):gsub("\n", "\\n"):gsub("\r", "\\r"):gsub("\t", "\\t")
+  return '"' .. value .. '"'
+end
+
+local function python_option_value(value)
+  value = tostring(value)
+  if value == "True" or value == "False" or value == "None" then
+    return value
+  end
+  return python_string(value)
+end
+
+local function dependency_default_options(reference, options)
+  local reference_ok, reference_error = validate_reference(reference)
+  if not reference_ok then
+    return nil, reference_error
+  end
+
+  local package_name = reference:match("^([^/]+)/")
+  if not package_name or not package_name:match("^[%w_.+%-]+$") then
+    return nil, "could not determine a safe package name from the reference"
+  end
+  if type(options) ~= "table" or #options == 0 then
+    return nil, "the selected recipe does not expose any options"
+  end
+
+  local entries = {}
+  local seen = {}
+  for _, option in ipairs(options) do
+    if type(option) ~= "table" or type(option.name) ~= "string" or option.name == "" or option.value == nil then
+      return nil, "Conan returned a malformed option"
+    end
+    if option.name:find("[%c\"'\\]") then
+      return nil, "Conan returned an option name that cannot be inserted safely"
+    end
+
+    local key = package_name .. "/*:" .. option.name
+    if not seen[key] then
+      seen[key] = true
+      entries[#entries + 1] = {
+        key = key,
+        value = python_option_value(option.value),
+      }
+    end
+  end
+  table.sort(entries, function(left, right)
+    return left.key < right.key
+  end)
+  return entries
+end
+
+local function find_first_method(lines, recipe_class, member_indentation)
+  for index = recipe_class.first + 1, recipe_class.last - 1 do
+    if not is_ignored(lines[index]) and leading_whitespace(lines[index]) == member_indentation then
+      local declaration = declaration_without_comment(lines[index])
+      if declaration:match("^def%s+") or declaration:match("^async%s+def%s+") then
+        local first = index
+        while first > recipe_class.first + 1 do
+          local previous = lines[first - 1]
+          local previous_content = trim(previous)
+          if
+            leading_whitespace(previous) == member_indentation
+            and (previous_content:match("^@") or previous_content:match("^#"))
+          then
+            first = first - 1
+          else
+            break
+          end
+        end
+        return first
+      end
+    end
+  end
+  return nil
+end
+
+local function scan_dictionary(lines, first, last, open_column)
+  local depth = 0
+  local quote
+  local escaped = false
+
+  for line_index = first, last do
+    local line = lines[line_index]
+    local column = line_index == first and open_column or 1
+    while column <= #line do
+      local character = line:sub(column, column)
+      if quote then
+        if escaped then
+          escaped = false
+        elseif character == "\\" then
+          escaped = true
+        elseif character == quote then
+          quote = nil
+        end
+      elseif character == "#" then
+        break
+      elseif character == '"' or character == "'" then
+        if line:sub(column, column + 2) == character .. character .. character then
+          return nil, "triple-quoted strings in default_options are not supported"
+        end
+        quote = character
+      elseif character == "{" then
+        depth = depth + 1
+      elseif character == "}" then
+        depth = depth - 1
+        if depth == 0 then
+          local remainder = trim(line:sub(column + 1):gsub("%s+#.*$", ""))
+          if remainder ~= "" then
+            return nil, "unsupported content after the default_options dictionary"
+          end
+          return { first = first, last = line_index, open_column = open_column, close_column = column }
+        end
+      end
+      column = column + 1
+    end
+    if quote then
+      return nil, "unterminated string in default_options"
+    end
+  end
+  return nil, "unterminated default_options dictionary"
+end
+
+local function find_default_options(lines, recipe_class, member_indentation)
+  local found
+  local index = recipe_class.first + 1
+  while index < recipe_class.last do
+    local line = lines[index]
+    if not is_ignored(line) and leading_whitespace(line) == member_indentation then
+      local declaration = declaration_without_comment(line)
+      if declaration:match("^default_options%s*=") then
+        if found then
+          return nil, "recipe contains more than one default_options assignment"
+        end
+        local equals = line:find("=", 1, true)
+        local open_column = equals and line:find("{", equals + 1, true)
+        if not open_column or trim(line:sub(equals + 1, open_column - 1)) ~= "" then
+          return nil, "default_options must be a Python dictionary literal"
+        end
+        local block, block_error = scan_dictionary(lines, index, recipe_class.last - 1, open_column)
+        if not block then
+          return nil, block_error
+        end
+        found = block
+        index = block.last
+      end
+    end
+    index = index + 1
+  end
+  return found
+end
+
+local function dictionary_has_key(lines, block, key)
+  local key_pattern = "[\"']" .. pattern_escape(key) .. "[\"']%s*:"
+  for index = block.first, block.last do
+    if lines[index]:match(key_pattern) then
+      return true
+    end
+  end
+  return false
+end
+
+local function append_comma(line)
+  local code, comment = line:match("^(.-)(%s+#.*)$")
+  code = code or line
+  comment = comment or ""
+  if trim(code):sub(-1) ~= "," then
+    code = code .. ","
+  end
+  return code .. comment
+end
+
+local function add_entries_to_dictionary(lines, block, member_indentation, entries)
+  local missing = {}
+  for _, entry in ipairs(entries) do
+    if not dictionary_has_key(lines, block, entry.key) then
+      missing[#missing + 1] = entry
+    end
+  end
+  if #missing == 0 then
+    return block, 0
+  end
+
+  if block.first == block.last then
+    local line = lines[block.first]
+    local content = trim(line:sub(block.open_column + 1, block.close_column - 1))
+    local additions = {}
+    for _, entry in ipairs(missing) do
+      additions[#additions + 1] = python_string(entry.key) .. ": " .. entry.value
+    end
+    local separator = ""
+    if content ~= "" then
+      separator = content:sub(-1) == "," and " " or ", "
+    end
+    lines[block.first] = line:sub(1, block.close_column - 1)
+      .. separator
+      .. table.concat(additions, ", ")
+      .. line:sub(block.close_column)
+    block.close_column = block.close_column + #separator + #table.concat(additions, ", ")
+    return block, #missing
+  end
+
+  local last_content
+  for index = block.last - 1, block.first, -1 do
+    local content = lines[index]
+    if index == block.first then
+      content = content:sub(block.open_column + 1)
+    end
+    if trim(content) ~= "" and not content:match("^%s*#") then
+      last_content = index
+      break
+    end
+  end
+  if last_content then
+    lines[last_content] = append_comma(lines[last_content])
+  end
+
+  local entry_indentation
+  for index = block.first + 1, block.last - 1 do
+    if not is_ignored(lines[index]) then
+      local indentation = leading_whitespace(lines[index])
+      if is_deeper(indentation, member_indentation) then
+        entry_indentation = indentation
+        break
+      end
+    end
+  end
+  entry_indentation = entry_indentation or (member_indentation .. member_indentation)
+
+  for offset, entry in ipairs(missing) do
+    table.insert(
+      lines,
+      block.last + offset - 1,
+      entry_indentation .. python_string(entry.key) .. ": " .. entry.value .. ","
+    )
+  end
+  block.last = block.last + #missing
+  return block, #missing
+end
+
+local function default_options_insertion_index(lines, recipe_class, member_indentation)
+  local insertion_index = find_first_method(lines, recipe_class, member_indentation) or recipe_class.last
+  while insertion_index > recipe_class.first + 1 and is_blank(lines[insertion_index - 1]) do
+    insertion_index = insertion_index - 1
+  end
+  return insertion_index
+end
+
+---Add dependency option values as recipe-level `default_options`.
+---@param source string
+---@param reference string
+---@param options table[] Sorted `{ name, value }` entries from Conan graph info.
+---@return string|nil updated_source
+---@return table|string result Metadata on success, error string on failure.
+function M.add_default_options(source, reference, options)
+  if type(source) ~= "string" then
+    return nil, "recipe source must be a string"
+  end
+  local entries, entries_error = dependency_default_options(reference, options)
+  if not entries then
+    return nil, entries_error
+  end
+
+  local lines, newline, split_error = split_lines(source)
+  if not lines then
+    return nil, split_error
+  end
+  local recipe_class, class_error = find_recipe_class(lines)
+  if not recipe_class then
+    return nil, class_error
+  end
+  local member_indentation, indentation_error = find_member_indentation(lines, recipe_class)
+  if not member_indentation then
+    return nil, indentation_error
+  end
+
+  local block, block_error = find_default_options(lines, recipe_class, member_indentation)
+  if block_error then
+    return nil, block_error
+  end
+
+  local added_count = #entries
+  if block then
+    block, added_count = add_entries_to_dictionary(lines, block, member_indentation, entries)
+  else
+    local insertion_index = default_options_insertion_index(lines, recipe_class, member_indentation)
+    local additions = { member_indentation .. "default_options = {" }
+    for _, entry in ipairs(entries) do
+      additions[#additions + 1] = member_indentation
+        .. member_indentation
+        .. python_string(entry.key)
+        .. ": "
+        .. entry.value
+        .. ","
+    end
+    additions[#additions + 1] = member_indentation .. "}"
+    if insertion_index <= #lines and not is_blank(lines[insertion_index]) then
+      additions[#additions + 1] = ""
+    end
+    insert_lines(lines, insertion_index, additions)
+    block = { first = insertion_index, last = insertion_index + #additions - 1 }
+    if additions[#additions] == "" then
+      block.last = block.last - 1
+    end
+  end
+
+  recipe_class = assert(find_recipe_class(lines))
+  block = assert(find_default_options(lines, recipe_class, member_indentation))
+  local block_lines = {}
+  for index = block.last, block.first, -1 do
+    table.insert(block_lines, 1, table.remove(lines, index))
+  end
+
+  recipe_class = assert(find_recipe_class(lines))
+  local insertion_index = default_options_insertion_index(lines, recipe_class, member_indentation)
+  if insertion_index <= #lines and not is_blank(lines[insertion_index]) then
+    block_lines[#block_lines + 1] = ""
+  end
+  insert_lines(lines, insertion_index, block_lines)
+
+  local updated = table.concat(lines, newline)
+  return updated,
+    {
+      changed = updated ~= source,
+      added_count = added_count,
+      skipped_count = #entries - added_count,
+    }
+end
+
 local function loaded_buffer_for(path)
   local real_path = vim.uv.fs_realpath(path)
   for _, buffer in ipairs(vim.api.nvim_list_bufs()) do
@@ -400,13 +730,7 @@ function M.resolve_configured_recipe(config, cwd)
   return path
 end
 
----Update a recipe on disk or its loaded Neovim buffer.
----@param path string
----@param reference string
----@param method_name "requirements"|"build_requirements"
----@return table|nil result
----@return string|nil error
-function M.update(path, reference, method_name)
+local function update_source(path, transform)
   path = vim.fs.normalize(path)
   local stat = vim.uv.fs_stat(path)
   if not stat or stat.type ~= "file" then
@@ -426,7 +750,7 @@ function M.update(path, reference, method_name)
     file:close()
   end
 
-  local updated, result = M.add(source, reference, method_name)
+  local updated, result = transform(source)
   if not updated then
     return nil, result
   end
@@ -445,6 +769,30 @@ function M.update(path, reference, method_name)
     end
   end
   return result
+end
+
+---Update requirement methods in a recipe on disk or in its loaded Neovim buffer.
+---@param path string
+---@param reference string
+---@param method_name "requirements"|"build_requirements"
+---@return table|nil result
+---@return string|nil error
+function M.update(path, reference, method_name)
+  return update_source(path, function(source)
+    return M.add(source, reference, method_name)
+  end)
+end
+
+---Update dependency `default_options` in a recipe on disk or in its loaded Neovim buffer.
+---@param path string
+---@param reference string
+---@param options table[]
+---@return table|nil result
+---@return string|nil error
+function M.update_default_options(path, reference, options)
+  return update_source(path, function(source)
+    return M.add_default_options(source, reference, options)
+  end)
 end
 
 return M

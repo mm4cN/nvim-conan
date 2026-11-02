@@ -303,6 +303,9 @@ local function open_search_picker(pattern, results)
     if recipe_path then
       table.insert(lines, "  <C-r>    add to requirements")
       table.insert(lines, "  <C-t>    add to build_requirements")
+      if options_state and options_state.status == "ready" and options_state.options and #options_state.options > 0 then
+        table.insert(lines, "  <C-o>    add options to default_options")
+      end
     end
 
     vim.api.nvim_buf_set_lines(buffer, 0, -1, false, lines)
@@ -471,6 +474,51 @@ local function open_search_picker(pattern, results)
           vim.notify("Added " .. e.value .. " to " .. method_name .. location, vim.log.levels.INFO)
         end
 
+        local function add_options_to_recipe()
+          local e = get_entry()
+          if not e or not e.value then
+            return
+          end
+
+          local remote = first_available_remote(e.value)
+          local state = remote and options_cache[e.value .. "\0" .. remote] or nil
+          if not state or state.status == "pending" or state.status == "loading" then
+            vim.notify("Conan options are still loading", vim.log.levels.INFO)
+            return
+          end
+          if state.status ~= "ready" then
+            vim.notify("Conan options are unavailable", vim.log.levels.WARN)
+            return
+          end
+          if not state.options or #state.options == 0 then
+            vim.notify("The selected recipe does not expose any options", vim.log.levels.INFO)
+            return
+          end
+
+          actions.close(prompt_bufnr)
+          local call_ok, result, update_error =
+            pcall(recipe_editor.update_default_options, recipe_path, e.value, state.options)
+          if not call_ok then
+            vim.notify("Could not update Conan recipe: " .. tostring(result), vim.log.levels.ERROR)
+            return
+          end
+          if not result then
+            vim.notify("Could not update Conan recipe: " .. tostring(update_error), vim.log.levels.ERROR)
+            return
+          end
+          if not result.changed then
+            vim.notify("All options are already present in default_options", vim.log.levels.INFO)
+            return
+          end
+
+          local location = result.location == "buffer" and " (unsaved buffer)" or ""
+          local skipped = result.skipped_count > 0 and (", preserved " .. result.skipped_count .. " existing") or ""
+          vim.notify(
+            "Added " .. result.added_count .. " option(s) to default_options" .. skipped .. location,
+            vim.log.levels.INFO
+          )
+        end
+
         if recipe_path then
           map({ "i", "n" }, "<C-r>", function()
             add_to_recipe("requirements")
@@ -478,6 +526,7 @@ local function open_search_picker(pattern, results)
           map({ "i", "n" }, "<C-t>", function()
             add_to_recipe("build_requirements")
           end)
+          map({ "i", "n" }, "<C-o>", add_options_to_recipe)
         end
 
         return true

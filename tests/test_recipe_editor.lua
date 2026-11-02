@@ -10,6 +10,14 @@ local function add(source, reference, method_name)
   return updated, result
 end
 
+local function add_default_options(source, reference, options)
+  local updated, result = recipe_editor.add_default_options(source, reference, options)
+  if not updated then
+    error(result)
+  end
+  return updated, result
+end
+
 local function write_file(path, content)
   local file = assert(io.open(path, "wb"))
   assert(file:write(content))
@@ -174,6 +182,160 @@ class DemoConan(ConanFile):
   expect.equality(updated, source)
   expect.equality(result.changed, false)
   expect.equality(result.already_present, true)
+end
+
+test_set["creates dependency default_options directly before the first recipe method"] = function()
+  local source = [[from conan import ConanFile
+
+class DemoConan(ConanFile):
+    name = "demo"
+
+    def requirements(self):
+        self.requires("zlib/1.3.1")
+]]
+  local expected = [[from conan import ConanFile
+
+class DemoConan(ConanFile):
+    name = "demo"
+    default_options = {
+        "zlib/*:fPIC": True,
+        "zlib/*:mode": "release",
+        "zlib/*:shared": False,
+    }
+
+    def requirements(self):
+        self.requires("zlib/1.3.1")
+]]
+
+  local updated, result = add_default_options(source, "zlib/1.3.1", {
+    { name = "shared", value = "False" },
+    { name = "mode", value = "release" },
+    { name = "fPIC", value = "True" },
+  })
+
+  expect.equality(updated, expected)
+  expect.equality(result.added_count, 3)
+  expect.equality(result.skipped_count, 0)
+end
+
+test_set["preserves existing default option values and adds only missing dependency keys"] = function()
+  local source = [[from conan import ConanFile
+
+class DemoConan(ConanFile):
+    default_options = {
+        "zlib/*:shared": True,
+    }
+
+    def requirements(self):
+        pass
+]]
+  local expected = [[from conan import ConanFile
+
+class DemoConan(ConanFile):
+    default_options = {
+        "zlib/*:shared": True,
+        "zlib/*:fPIC": True,
+    }
+
+    def requirements(self):
+        pass
+]]
+
+  local updated, result = add_default_options(source, "zlib/1.3.1", {
+    { name = "fPIC", value = "True" },
+    { name = "shared", value = "False" },
+  })
+
+  expect.equality(updated, expected)
+  expect.equality(result.added_count, 1)
+  expect.equality(result.skipped_count, 1)
+end
+
+test_set["moves an existing one-line default_options dictionary before the first method"] = function()
+  local source = [[from conan import ConanFile
+
+class DemoConan(ConanFile):
+    def requirements(self):
+        pass
+
+    default_options = {"fmt/*:header_only": True}
+]]
+  local expected = [[from conan import ConanFile
+
+class DemoConan(ConanFile):
+    default_options = {"fmt/*:header_only": True, "zlib/*:shared": False}
+
+    def requirements(self):
+        pass
+
+]]
+
+  local updated, result = add_default_options(source, "zlib/1.3.1#revision", {
+    { name = "shared", value = "False" },
+  })
+
+  expect.equality(updated, expected)
+  expect.equality(result.changed, true)
+  expect.equality(result.added_count, 1)
+end
+
+test_set["does not duplicate default_options entries on repeated insertion"] = function()
+  local source = [[from conan import ConanFile
+
+class DemoConan(ConanFile):
+    default_options = {
+        "zlib/*:shared": False,
+    }
+
+    def requirements(self):
+        pass
+]]
+
+  local updated, result = add_default_options(source, "zlib/1.3.1", {
+    { name = "shared", value = "False" },
+  })
+
+  expect.equality(updated, source)
+  expect.equality(result.changed, false)
+  expect.equality(result.added_count, 0)
+  expect.equality(result.skipped_count, 1)
+end
+
+test_set["rejects unsupported default_options expressions without changing the recipe"] = function()
+  local source = [[from conan import ConanFile
+
+class DemoConan(ConanFile):
+    default_options = dict(shared=False)
+
+    def requirements(self):
+        pass
+]]
+
+  local updated, err = recipe_editor.add_default_options(source, "zlib/1.3.1", {
+    { name = "shared", value = "False" },
+  })
+
+  expect.equality(updated, nil)
+  expect.equality(err:find("dictionary literal", 1, true) ~= nil, true)
+end
+
+test_set["rejects an unterminated default_options dictionary at the recipe class boundary"] = function()
+  local source = [[from conan import ConanFile
+
+class DemoConan(ConanFile):
+    default_options = {
+        "zlib/*:shared": True,
+
+def unrelated():
+    return {}
+]]
+
+  local updated, err = recipe_editor.add_default_options(source, "zlib/1.3.1", {
+    { name = "fPIC", value = "True" },
+  })
+
+  expect.equality(updated, nil)
+  expect.equality(err:find("unterminated", 1, true) ~= nil, true)
 end
 
 test_set["rejects a recipe without a ConanFile class without changing it"] = function()
