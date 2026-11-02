@@ -1,5 +1,7 @@
 # 🌿 nvim-conan
 
+[![CI](https://github.com/mm4cN/nvim-conan/actions/workflows/ci.yml/badge.svg)](https://github.com/mm4cN/nvim-conan/actions/workflows/ci.yml)
+
 <p align="center">
   <img src="assets/icon.png" alt="nvim-conan logo" width="240">
 </p>

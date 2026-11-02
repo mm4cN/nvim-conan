@@ -6,23 +6,52 @@ on:
       - main
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
-  format:
+  formatting:
+    name: Formatting
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: JohnnyMorganz/stylua-action@v4
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Check Lua formatting
+        uses: JohnnyMorganz/stylua-action@v5
         with:
-          version: v2.5.2
           token: ${{ secrets.GITHUB_TOKEN }}
+          version: 2.6.0
           args: --check lua plugin tests
 
-  test:
+  tests:
+    name: Tests (Neovim ${{ matrix.neovim }})
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    continue-on-error: ${{ matrix.experimental }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - neovim: v0.12.0
+            experimental: false
+          - neovim: stable
+            experimental: false
+          - neovim: nightly
+            experimental: true
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: rhysd/action-setup-vim@v1
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Install Neovim
+        uses: rhysd/action-setup-vim@v1
         with:
           neovim: true
-          version: v0.12.0
-      - run: make test
+          version: ${{ matrix.neovim }}
+
+      - name: Run tests
+        run: make test
