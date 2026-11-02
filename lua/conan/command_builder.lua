@@ -70,6 +70,16 @@ function M.lock(config)
   return { "conan", "lock", "create", config.recipe or "." }
 end
 
+function M.sbom(config, lockfile, format, output_folder)
+  local argv = { "conan", "graph", "info", config.recipe or "." }
+  append_profiles(argv, config)
+  append_key_values(argv, "-o", config.options)
+  append_key_values(argv, "-c", config.conf)
+  append_lockfile(argv, lockfile)
+  append(argv, "--deployer=cyclone_" .. format, "--deployer-folder", output_folder)
+  return argv
+end
+
 function M.create(config, additional_args)
   local argv = { "conan", "create", config.recipe or "." }
   append_profiles(argv, config)

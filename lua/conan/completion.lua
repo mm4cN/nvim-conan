@@ -146,6 +146,15 @@ function M.complete(context, arg_lead, providers)
     vim.list_extend(candidates, remotes(remote_provider))
     return filtered(candidates, arg_lead)
   end
+  if context.subcommand == "sbom" then
+    if context.argument_index == 1 then
+      return filtered({ "1.4", "1.6" }, arg_lead)
+    end
+    if context.argument_index == 2 then
+      return vim.fn.getcompletion(arg_lead, "dir")
+    end
+    return {}
+  end
 
   local command = command_names[context.subcommand]
   if not command then

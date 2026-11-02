@@ -107,4 +107,9 @@ test_set["does not suggest flags for positional values or unsupported commands"]
   expect.equality(completion.complete({ subcommand = "search", argument_index = 1 }, "zlib", {}), {})
 end
 
+test_set["completes supported SBOM formats"] = function()
+  expect.equality(completion.complete({ subcommand = "sbom", argument_index = 1 }, "1.", {}), { "1.4", "1.6" })
+  expect.equality(completion.complete({ subcommand = "sbom", argument_index = 3 }, "", {}), {})
+end
+
 return test_set

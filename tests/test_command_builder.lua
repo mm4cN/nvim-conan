@@ -144,6 +144,33 @@ test_set["lock uses the configured recipe"] = function()
   })
 end
 
+test_set["sbom resolves the configured graph and invokes the selected CycloneDX deployer"] = function()
+  local sbom_config = vim.tbl_extend("force", config, {
+    options = { ["zlib/*:shared"] = false },
+    conf = { ["tools.build:jobs"] = 8 },
+  })
+
+  expect.equality(command_builder.sbom(sbom_config, "locks/project.lock", "1.6", "artifacts/sbom"), {
+    "conan",
+    "graph",
+    "info",
+    "recipes/conanfile.py",
+    "-pr:b",
+    "build-profile",
+    "-pr:h",
+    "host-profile",
+    "-o",
+    "zlib/*:shared=false",
+    "-c",
+    "tools.build:jobs=8",
+    "--lockfile",
+    "locks/project.lock",
+    "--deployer=cyclone_1.6",
+    "--deployer-folder",
+    "artifacts/sbom",
+  })
+end
+
 test_set["create without additional arguments preserves existing configured arguments"] = function()
   expect.equality(command_builder.create(config), {
     "conan",

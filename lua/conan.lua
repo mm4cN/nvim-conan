@@ -26,6 +26,9 @@ local subcommand_tbl = {
   lock = {
     impl = require("commands").lock,
   },
+  sbom = {
+    impl = require("commands").sbom,
+  },
   search = {
     impl = require("commands").search,
   },

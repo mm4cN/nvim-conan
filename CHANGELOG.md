@@ -7,8 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [4.1.0] - 2026-11-03
+
 ### Added
 
+- `:Conan sbom [1.4|1.6] [output-folder]` generates a CycloneDX SBOM using Conan's built-in
+  deployer and the configured dependency graph.
 - `:Conan` command-line completion now suggests configured remotes and dynamically discovers flags
   for `create`, `export`, and `export_package` from the installed Conan version.
 - Conan search results can be appended directly to a configured Python recipe with separate

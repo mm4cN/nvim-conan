@@ -22,6 +22,7 @@
   - `install`: Install dependencies
   - `build`: Build using Conan profiles
   - `lock`: Create or update lockfiles
+  - `sbom`: Generate a CycloneDX SBOM from the resolved dependency graph
   - `search`: Search Conan cache or remotes
   - `create`: Package your recipe
   - `export`: Export the recipe
@@ -95,6 +96,18 @@ conan export-pkg [recipe] [args...]
 
 Additional arguments retain their original order, remain separate literal argv elements, and are
 passed directly to Conan without shell interpretation.
+
+Generate a CycloneDX SBOM with Conan 2.26 or newer:
+
+```vim
+:Conan sbom
+:Conan sbom 1.4
+:Conan sbom 1.6 artifacts/sbom
+```
+
+The defaults are CycloneDX 1.6 and `build/sbom`. The command resolves the configured recipe with
+its profiles, options, conf, and lockfile, then writes `sbom-cyclonedx-<version>.json` through
+Conan's built-in SBOM deployer.
 
 Command-line completion suggests configured remotes for the second `search` argument and for
 `--remote`/`-r` values. For `create`, `export`, and `export_package`, available flags are read from

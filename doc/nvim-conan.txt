@@ -70,6 +70,16 @@ Available subcommands:
 `lock`
     Run `conan lock create` for the configured recipe.
 
+`:Conan sbom [1.4|1.6] [output-folder]`
+    Generate a CycloneDX SBOM from the resolved dependency graph using Conan's
+    built-in deployer. The defaults are version 1.6 and `build/sbom`: >
+      :Conan sbom
+      :Conan sbom 1.4
+      :Conan sbom 1.6 artifacts/sbom
+<
+    The configured profiles, options, conf, and lockfile are applied. This
+    command requires Conan 2.26 or newer.
+
 `:Conan create [args...]`
     Run `conan create` for the configured recipe: >
       conan create [recipe] [profiles] [optional build policy] [args...]

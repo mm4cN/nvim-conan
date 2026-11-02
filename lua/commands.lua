@@ -1,6 +1,6 @@
 --- nvim-conan main module.
 --- Provides user-facing commands for Conan workflows inside Neovim:
---- install/build/lock/create/export/export-pkg/search/upload.
+--- install/build/lock/sbom/create/export/export-pkg/search/upload.
 ---
 --- This module integrates:
 --- - floating terminal runner (utils.open_floating_terminal)
@@ -139,6 +139,41 @@ function M.lock()
 
   local argv = command_builder.lock(config)
   run_terminal_with_status("🔒 Conan: lock", argv, "🔒 Conan Lock", true)
+end
+
+--- Generates a CycloneDX SBOM from the resolved dependency graph.
+---@param args string[]|nil Optional format (`1.4` or `1.6`) and output folder.
+function M.sbom(args)
+  args = args or {}
+  if #args > 2 then
+    vim.notify("Usage: :Conan sbom [1.4|1.6] [output-folder]", vim.log.levels.ERROR)
+    return
+  end
+
+  local format = args[1] or "1.6"
+  if format ~= "1.4" and format ~= "1.6" then
+    vim.notify("SBOM format must be 1.4 or 1.6", vim.log.levels.ERROR)
+    return
+  end
+  local output_folder = args[2] or "build/sbom"
+  if output_folder == "" then
+    vim.notify("SBOM output folder must not be empty", vim.log.levels.ERROR)
+    return
+  end
+
+  local config = read_config()
+  if config == nil then
+    vim.notify("Couldn't read config", vim.log.levels.ERROR)
+    return
+  end
+
+  local argv = command_builder.sbom(config, resolve_lockfile(config), format, output_folder)
+  local output_file = output_folder .. "/sbom-cyclonedx-" .. format .. ".json"
+  run_terminal_with_status("📋 Conan: SBOM", argv, "📋 Conan SBOM", true, function(code)
+    if code == 0 then
+      vim.notify("Generated SBOM: " .. output_file, vim.log.levels.INFO)
+    end
+  end)
 end
 
 --- Runs `conan create` using config file.
