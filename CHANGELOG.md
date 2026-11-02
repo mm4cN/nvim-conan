@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- `:Conan` command-line completion now suggests configured remotes and dynamically discovers flags
+  for `create`, `export`, and `export_package` from the installed Conan version.
 - Conan search results can be appended directly to a configured Python recipe with separate
   mappings for `self.requires(...)` and `self.tool_requires(...)`. Missing `requirements()` or
   `build_requirements()` methods are created automatically, while malformed or ambiguous recipes

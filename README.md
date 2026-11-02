@@ -94,6 +94,10 @@ conan export-pkg [recipe] [args...]
 Additional arguments retain their original order, remain separate literal argv elements, and are
 passed directly to Conan without shell interpretation.
 
+Command-line completion suggests configured remotes for the second `search` argument and for
+`--remote`/`-r` values. For `create`, `export`, and `export_package`, available flags are read from
+the installed Conan version's `--help` output and cached for the Neovim session.
+
 In the `:Conan search` results, a selected package reference can be added to the configured Python
 recipe with:
 

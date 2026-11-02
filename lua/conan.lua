@@ -1,4 +1,5 @@
 local M = {}
+local completion = require("conan.completion")
 
 local function conan_check_or_install()
   if vim.fn.executable("conan") == 1 then
@@ -13,7 +14,6 @@ end
 
 ---@class ConanSubCommand
 ---@field impl fun(args:string[], opts: table)
----@field complete? fun(subcmd_arg_lead: string): string[]
 
 ---@type table<string, ConanSubCommand>
 local subcommand_tbl = {
@@ -62,20 +62,23 @@ end
 vim.api.nvim_create_user_command("Conan", ConanCmd, {
   nargs = "+",
   desc = "Conan commands completions",
-  complete = function(arg_lead, cmdline, _)
-    local subcmd_key, subcmd_arg_lead = cmdline:match("^['<,'>]*Conan[!]*%s(%S+)%s(.*)$")
-    if subcmd_key and subcmd_arg_lead and subcommand_tbl[subcmd_key] and subcommand_tbl[subcmd_key].complete then
-      return subcommand_tbl[subcmd_key].complete(subcmd_arg_lead)
+  complete = function(arg_lead, cmdline, cursor_position)
+    local context = completion.context(cmdline, cursor_position)
+    if context and subcommand_tbl[context.subcommand] and context.argument_index > 0 then
+      return completion.complete(context, arg_lead)
     end
-    if cmdline:match("^['<,'>]*Conan[!]*%s+%w*$") then
+    if cmdline:match("^['<,'>]*Conan[!]*%s+[%w_]*$") then
       local subcommand_keys = vim.tbl_keys(subcommand_tbl)
-      return vim
+      local matches = vim
         .iter(subcommand_keys)
         :filter(function(key)
-          return key:find(arg_lead) ~= nil
+          return key:sub(1, #arg_lead) == arg_lead
         end)
         :totable()
+      table.sort(matches)
+      return matches
     end
+    return {}
   end,
   bang = true,
 })

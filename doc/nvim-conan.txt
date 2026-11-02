@@ -98,6 +98,11 @@ For these commands, additional arguments retain their original order, remain
 separate literal argv elements, and are passed directly to Conan without shell
 interpretation.
 
+Command-line completion uses the installed Conan version's help output for
+`create`, `export`, and `export_package` flags. Configured remote names are
+completed for the second `search` argument and after `--remote` or `-r`.
+Completion data is cached for the current Neovim session.
+
 BREAKING CHANGE: `:Conan export alice stable` and
 `:Conan export_package alice stable` are no longer rewritten as user/channel
 flags. Use explicit Conan flags instead: >
