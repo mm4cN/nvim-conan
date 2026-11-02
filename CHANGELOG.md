@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   mappings for `self.requires(...)` and `self.tool_requires(...)`. Missing `requirements()` or
   `build_requirements()` methods are created automatically, while malformed or ambiguous recipes
   are left unchanged.
+- The Conan search preview displays current option values resolved for the selected reference with
+  `conan graph info`.
 
 ## [4.0.0] - 2026-09-09
 

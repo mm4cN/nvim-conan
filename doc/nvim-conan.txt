@@ -109,6 +109,10 @@ flags. Use explicit Conan flags instead: >
     Search Conan packages asynchronously and open Telescope results. Press
     <Enter> in the picker to copy a reference, or <C-i> to insert it.
 
+    The preview resolves the selected reference with `conan graph info` and
+    displays its current option values below the remote availability list.
+    Resolved options are cached while the picker remains open.
+
     When the project configuration selects an existing Python recipe, two
     additional mappings are available:
       <C-r>  append self.requires(...) to requirements()

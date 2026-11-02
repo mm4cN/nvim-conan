@@ -106,6 +106,9 @@ If the target method does not exist, it is created at the end of the `ConanFile`
 bindings are available only when `conan-config.json` selects an existing `.py` recipe. Ambiguous or
 malformed recipe structures are left unchanged and reported as errors.
 
+The search preview resolves the selected reference with `conan graph info` and displays its current
+option values below the remote availability list. Results are cached while the picker remains open.
+
 This is a breaking change for exports: `:Conan export alice stable` and
 `:Conan export_package alice stable` are no longer rewritten as user/channel flags. Pass explicit
 Conan flags instead, as shown in the examples above.

@@ -24,6 +24,7 @@ local action_state = require("telescope.actions.state")
 
 local conan_status = require("conan_status")
 local command_builder = require("conan.command_builder")
+local graph_options = require("conan.graph_options")
 local recipe_editor = require("conan.recipe_editor")
 
 --- Reads and decodes `conan-config.json` from cwd or `.vscode/` subdirectory.
@@ -258,12 +259,114 @@ end
 
 --- Opens Telescope picker for search results:
 --- - left pane: package refs
---- - preview: remotes availability + per-remote errors
+--- - preview: remote availability, per-remote errors, and resolved option values
 ---@param pattern string
 ---@param results table
 local function open_search_picker(pattern, results)
   local refs, by_ref, all_remotes, remote_errors = build_index(results)
   local recipe_path = recipe_editor.resolve_configured_recipe(read_config(), vim.fn.getcwd())
+  local options_cache = {}
+  local current_preview_key
+
+  local function first_available_remote(reference)
+    local available = by_ref[reference] or {}
+    for _, remote in ipairs(all_remotes) do
+      if available[remote] and not remote_errors[remote] then
+        return remote
+      end
+    end
+    return nil
+  end
+
+  local function render_preview(buffer, entry, options_state)
+    if not vim.api.nvim_buf_is_valid(buffer) or not vim.api.nvim_buf_is_loaded(buffer) then
+      return
+    end
+
+    local lines = { ("Recipe: %s"):format(entry.value), "" }
+    for _, remote in ipairs(all_remotes) do
+      local remote_error = remote_errors[remote]
+      if remote_error then
+        table.insert(lines, ("  ⚠️  %s: %s"):format(remote, remote_error))
+      else
+        local available = entry.present[remote] == true
+        table.insert(lines, ("  %s  %s"):format(available and "✅" or "—", remote))
+      end
+    end
+
+    table.insert(lines, "")
+    vim.list_extend(lines, graph_options.format_section(options_state))
+    table.insert(lines, "")
+    table.insert(lines, "Actions:")
+    table.insert(lines, "  <Enter>  copy ref to clipboard")
+    table.insert(lines, "  <C-i>    insert ref at cursor")
+    if recipe_path then
+      table.insert(lines, "  <C-r>    add to requirements")
+      table.insert(lines, "  <C-t>    add to build_requirements")
+    end
+
+    vim.api.nvim_buf_set_lines(buffer, 0, -1, false, lines)
+    vim.bo[buffer].filetype = "markdown"
+  end
+
+  local function load_options(buffer, entry)
+    current_preview_key = entry.value .. "\0"
+    local remote = first_available_remote(entry.value)
+    if not remote then
+      local state = { status = "error", error = "no available remote" }
+      render_preview(buffer, entry, state)
+      return
+    end
+
+    local key = entry.value .. "\0" .. remote
+    current_preview_key = key
+    local state = options_cache[key]
+    if state then
+      render_preview(buffer, entry, state)
+      return
+    end
+
+    state = { status = "pending" }
+    options_cache[key] = state
+    render_preview(buffer, entry, state)
+
+    vim.defer_fn(function()
+      if state.status ~= "pending" then
+        return
+      end
+      if current_preview_key ~= key then
+        options_cache[key] = nil
+        return
+      end
+
+      state.status = "loading"
+      render_preview(buffer, entry, state)
+      vim.system(graph_options.command(entry.value, remote), { text = true }, function(response)
+        local options, options_error
+        if response.code == 0 then
+          options, options_error = graph_options.parse(response.stdout or "", entry.value)
+        else
+          options_error = vim.trim(response.stderr or "")
+          if options_error == "" then
+            options_error = "conan graph info exited with code " .. tostring(response.code)
+          end
+        end
+
+        vim.schedule(function()
+          if options then
+            state.status = "ready"
+            state.options = options
+          else
+            state.status = "error"
+            state.error = options_error
+          end
+          if current_preview_key == key then
+            render_preview(buffer, entry, state)
+          end
+        end)
+      end)
+    end, 150)
+  end
 
   if #refs == 0 then
     local any_error = false
@@ -310,31 +413,7 @@ local function open_search_picker(pattern, results)
       sorter = conf.generic_sorter({}),
       previewer = previewers.new_buffer_previewer({
         define_preview = function(self, entry)
-          local lines = {}
-          table.insert(lines, ("Recipe: %s"):format(entry.value))
-          table.insert(lines, "")
-
-          for _, r in ipairs(all_remotes) do
-            local err = remote_errors[r]
-            if err then
-              table.insert(lines, ("  ⚠️  %s: %s"):format(r, err))
-            else
-              local ok = entry.present[r] == true
-              table.insert(lines, ("  %s  %s"):format(ok and "✅" or "—", r))
-            end
-          end
-
-          table.insert(lines, "")
-          table.insert(lines, "Actions:")
-          table.insert(lines, "  <Enter>  copy ref to clipboard")
-          table.insert(lines, "  <C-i>    insert ref at cursor")
-          if recipe_path then
-            table.insert(lines, "  <C-r>    add to requirements")
-            table.insert(lines, "  <C-t>    add to build_requirements")
-          end
-
-          vim.api.nvim_buf_set_lines(self.state.bufnr, 0, -1, false, lines)
-          vim.bo[self.state.bufnr].filetype = "markdown"
+          load_options(self.state.bufnr, entry)
         end,
       }),
       layout_strategy = "horizontal",
