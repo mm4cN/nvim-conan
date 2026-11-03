@@ -211,4 +211,21 @@ test_set["explicit reconfiguration stores a free-form build policy"] = function(
   expect.equality(vim.json.decode(result.content).build_policy, "missing:zlib/*")
 end
 
+test_set["reconfiguration stores list-valued conf as a JSON array"] = function()
+  local values = {
+    [=[tools.build:cxxflags+=["-fsanitize=address,undefined", "-fno-omit-frame-pointer"]]=],
+    [=[tools.build:cxxflags+=['-fsanitize=address,undefined', '-fno-omit-frame-pointer']]=],
+  }
+
+  for _, value in ipairs(values) do
+    local result = run_wizard("reconfigure", { "", "", value, "", "" })
+    local cxxflags = vim.json.decode(result.content).conf["tools.build:cxxflags+"]
+
+    expect.equality(cxxflags, {
+      "-fsanitize=address,undefined",
+      "-fno-omit-frame-pointer",
+    })
+  end
+end
+
 return test_set

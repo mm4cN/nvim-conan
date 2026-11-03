@@ -178,6 +178,19 @@ For example: >
   "build_policy": "missing"
 <
 
+List-valued Conan configuration can be stored as a JSON array instead of an
+escaped JSON string: >
+  "conf": {
+    "tools.build:cxxflags+": [
+      "-fsanitize=address,undefined",
+      "-fno-omit-frame-pointer"
+    ]
+  }
+<
+The array is serialized into one literal `-c` argument. Existing pre-encoded
+string values remain supported. The reconfiguration prompt accepts lists with
+either JSON double quotes or single-quoted string values.
+
 ==============================================================================
 6. Health check                                         *nvim-conan-checkhealth*
 

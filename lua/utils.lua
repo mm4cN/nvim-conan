@@ -64,9 +64,7 @@ function M.encode_json(tbl, indent)
       for ok, ov in pairs(v) do
         oi = oi + 1
         local opt_key = string.format('"%s"', tostring(ok))
-        local opt_val = type(ov) == "number"
-          or type(ov) == "boolean" and tostring(ov)
-          or string.format("%q", tostring(ov))
+        local opt_val = vim.json.encode(ov)
         local opt_comma = (oi < on) and "," or ""
         table.insert(opts_lines, string.format("%s  %s: %s%s", indent_str, opt_key, opt_val, opt_comma))
       end
@@ -368,6 +366,94 @@ function M.link_compile_commands(path)
   end)
 end
 
+local function parse_quoted_string_list(value)
+  local position = 1
+  local length = #value
+
+  local function skip_whitespace()
+    while position <= length and value:sub(position, position):match("%s") do
+      position = position + 1
+    end
+  end
+
+  skip_whitespace()
+  if value:sub(position, position) ~= "[" then
+    return nil
+  end
+  position = position + 1
+  skip_whitespace()
+
+  local result = {}
+  if value:sub(position, position) == "]" then
+    position = position + 1
+    skip_whitespace()
+    return position > length and result or nil
+  end
+
+  while position <= length do
+    local quote = value:sub(position, position)
+    if quote ~= "'" and quote ~= '"' then
+      return nil
+    end
+    position = position + 1
+
+    local characters = {}
+    local closed = false
+    while position <= length do
+      local character = value:sub(position, position)
+      if character == quote then
+        closed = true
+        position = position + 1
+        break
+      end
+      if character == "\\" and position < length then
+        local escaped = value:sub(position + 1, position + 1)
+        if escaped == quote or escaped == "\\" then
+          characters[#characters + 1] = escaped
+        else
+          characters[#characters + 1] = character .. escaped
+        end
+        position = position + 2
+      else
+        characters[#characters + 1] = character
+        position = position + 1
+      end
+    end
+    if not closed then
+      return nil
+    end
+    result[#result + 1] = table.concat(characters)
+
+    skip_whitespace()
+    local separator = value:sub(position, position)
+    if separator == "]" then
+      position = position + 1
+      skip_whitespace()
+      return position > length and result or nil
+    end
+    if separator ~= "," then
+      return nil
+    end
+    position = position + 1
+    skip_whitespace()
+  end
+
+  return nil
+end
+
+local function parse_prompt_value(value)
+  if not value:match("^%s*%[") then
+    return value
+  end
+
+  local ok, decoded = pcall(vim.json.decode, value)
+  if ok and type(decoded) == "table" then
+    return decoded
+  end
+
+  return parse_quoted_string_list(value) or value
+end
+
 local function prompt_for(what, callback)
   local options = {}
   local function prompt()
@@ -379,7 +465,7 @@ local function prompt_for(what, callback)
       elseif input ~= "" then
         local k, v = input:match("^%s*(.-)%s*=%s*(.-)%s*$")
         if k and v and k ~= "" and v ~= "" then
-          options[k] = v
+          options[k] = parse_prompt_value(v)
         else
           vim.notify("Invalid input. Use key=value format.", vim.log.levels.WARN)
         end

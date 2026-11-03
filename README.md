@@ -75,6 +75,23 @@ The automatic first-time configuration leaves Conan's optional `build_policy` un
 A missing, empty, or blank value omits `--build`; otherwise, `install`, `build`, and `create`
 include `--build=<value>`.
 
+List-valued Conan configuration can be written as a JSON array without escaping its quotes:
+
+```json
+{
+  "conf": {
+    "tools.build:cxxflags+": [
+      "-fsanitize=address,undefined",
+      "-fno-omit-frame-pointer"
+    ]
+  }
+}
+```
+
+The array is passed to Conan as one literal `-c` argument. Pre-encoded string values remain
+supported for backwards compatibility. During `:Conan reconfigure`, list values can be entered
+using either JSON double quotes or the equivalent single-quoted form.
+
 Create and export commands accept additional Conan arguments:
 
 ```vim

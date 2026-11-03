@@ -42,9 +42,16 @@ local function sorted_entries(values)
   return entries
 end
 
+local function serialize_value(value)
+  if type(value) == "table" then
+    return vim.json.encode(value)
+  end
+  return tostring(value)
+end
+
 local function append_key_values(argv, flag, values)
   for _, entry in ipairs(sorted_entries(values)) do
-    append(argv, flag, entry.key .. "=" .. tostring(entry.value))
+    append(argv, flag, entry.key .. "=" .. serialize_value(entry.value))
   end
 end
 

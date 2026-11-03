@@ -115,6 +115,44 @@ test_set["build preserves an arbitrary build policy pattern and argument orderin
   })
 end
 
+test_set["build serializes JSON array conf values as one Conan argument"] = function()
+  local decoded = vim.json.decode([[
+    {
+      "conf": {
+        "tools.build:cxxflags+": [
+          "-fsanitize=address,undefined",
+          "-fno-omit-frame-pointer"
+        ]
+      }
+    }
+  ]])
+  local build_config = vim.tbl_extend("force", config, decoded)
+
+  expect.equality(command_builder.build(build_config), {
+    "conan",
+    "build",
+    "recipes/conanfile.py",
+    "-pr:b",
+    "build-profile",
+    "-pr:h",
+    "host-profile",
+    "--build=missing",
+    "-c",
+    'tools.build:cxxflags+=["-fsanitize=address,undefined","-fno-omit-frame-pointer"]',
+  })
+end
+
+test_set["build preserves legacy pre-encoded conf array strings"] = function()
+  local build_config = vim.tbl_extend("force", config, {
+    conf = {
+      ["tools.build:cxxflags+"] = '["-fsanitize=address,undefined", "-fno-omit-frame-pointer"]',
+    },
+  })
+
+  local argv = command_builder.build(build_config)
+  expect.equality(argv[#argv], 'tools.build:cxxflags+=["-fsanitize=address,undefined", "-fno-omit-frame-pointer"]')
+end
+
 test_set["paths and option values remain single literal arguments"] = function()
   local literal_config = vim.tbl_extend("force", config, {
     recipe = "recipes/my project;$(touch unsafe).py",
