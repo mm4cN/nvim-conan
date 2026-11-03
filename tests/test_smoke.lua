@@ -31,4 +31,36 @@ test_set["loads split command modules through the public facade"] = function()
   expect.equality(type(require("conan.commands.upload")), "table")
 end
 
+test_set["loads split utility modules through the public facade"] = function()
+  local utils = require("utils")
+
+  for _, name in ipairs({
+    "file_exists",
+    "find_config",
+    "write_json_file",
+    "encode_json",
+    "ensure_config",
+    "get_major_version",
+    "check_version_compat",
+    "open_floating_terminal",
+    "get_conan_remotes_from_cli",
+    "get_cached_package_refs",
+    "get_conan_profiles",
+    "pick_conan_profile",
+    "pick_recipe",
+    "find_latest_compile_commands",
+    "link_compile_commands",
+    "configure",
+    "reconfigure",
+  }) do
+    expect.equality(type(utils[name]), "function")
+  end
+
+  expect.equality(type(require("conan.utils.config")), "table")
+  expect.equality(type(require("conan.utils.configuration")), "table")
+  expect.equality(type(require("conan.utils.selectors")), "table")
+  expect.equality(type(require("conan.utils.terminal")), "table")
+  expect.equality(type(require("conan.utils.compile_commands")), "table")
+end
+
 return test_set

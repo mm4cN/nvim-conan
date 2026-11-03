@@ -5,26 +5,7 @@ local conan_status = require("conan_status")
 --- Reads and decodes `conan-config.json` from cwd or `.vscode/` subdirectory.
 ---@return table|nil
 function M.read_config()
-  local utils = require("utils")
-  local path = utils.find_config(vim.fn.getcwd())
-  if not path then
-    return nil
-  end
-
-  local ok, config = pcall(function()
-    local file = io.open(path, "r")
-    if not file then
-      return nil
-    end
-    local content = file:read("*a")
-    file:close()
-    return vim.json.decode(content)
-  end)
-
-  if not ok or config == nil then
-    return nil
-  end
-  return config
+  return require("conan.utils.config").read_config(vim.fn.getcwd())
 end
 
 ---@param config table
