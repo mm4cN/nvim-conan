@@ -101,6 +101,7 @@ M.setup = function()
   end
 
   local utils = require("utils")
+  local config_utils = require("conan.utils.config")
   local version = require("version")
   local cwd = vim.fn.getcwd()
 
@@ -110,7 +111,7 @@ M.setup = function()
     return
   end
 
-  local config_path = utils.find_config(cwd)
+  local config_path = config_utils.find_config(cwd)
   if not config_path then
     vim.schedule(function()
       utils.configure()
@@ -118,17 +119,8 @@ M.setup = function()
     return
   end
 
-  local ok, config = pcall(function()
-    local file = io.open(config_path, "r")
-    if not file then
-      return nil
-    end
-    local content = file:read("*a")
-    file:close()
-    return vim.json.decode(content)
-  end)
-
-  if ok and config then
+  local config = config_utils.read_config(cwd)
+  if config then
     utils.check_version_compat(config.version, version)
   else
     vim.notify("⚠️ Failed to read existing config at " .. config_path, vim.log.levels.WARN)
