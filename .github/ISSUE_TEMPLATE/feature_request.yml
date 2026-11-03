@@ -1,0 +1,67 @@
+name: I have an idea
+description: Something annoying in your workflow? Let's make it less annoying.
+title: "[idea] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Start with the problem, not a twenty-step implementation plan.
+        A concrete Conan workflow is worth more than a generic feature pitch.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part of the workflow?
+      options:
+        - install / build / lock
+        - search and dependency discovery
+        - recipe editing
+        - configuration
+        - packaging / export / upload
+        - SBOM
+        - completion and general Neovim UX
+        - something new
+    validations:
+      required: true
+
+  - type: textarea
+    id: pain
+    attributes:
+      label: What currently sucks?
+      description: What are you doing manually, repeatedly, or outside Neovim?
+      placeholder: Every time I need to ..., I have to ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would feel better?
+      description: Describe the behavior from the user's point of view.
+      placeholder: I would like :Conan ... to ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: example
+    attributes:
+      label: Example workflow
+      description: Commands, mappings, recipe snippets, or a quick mockup are all welcome.
+      placeholder: |
+        :Conan ...
+        -> select ...
+        -> plugin writes/runs/shows ...
+
+  - type: textarea
+    id: tradeoffs
+    attributes:
+      label: Anything that could bite us?
+      description: Weird Conan behavior, compatibility concerns, destructive actions, or edge cases.
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Want to help build it?
+      options:
+        - label: I can test this on a real Conan project.
+        - label: I might be able to send a PR.

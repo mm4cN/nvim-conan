@@ -1,0 +1,100 @@
+name: Something broke
+description: nvim-conan did a backflip? Give me enough details to reproduce it.
+title: "[bug] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        No ceremony needed. Short and concrete beats a wall of text.
+        Please remove tokens, private remote URLs, and other secrets from pasted output.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Where did it break?
+      options:
+        - install / build / lock
+        - search picker
+        - recipe editing
+        - configure / reconfigure
+        - SBOM
+        - create / export / upload
+        - command completion
+        - something else
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What went wrong?
+      description: What did you expect, and what happened instead?
+      placeholder: I ran ..., expected ..., but got ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How do I reproduce it?
+      description: A tiny recipe or exact command sequence is perfect.
+      placeholder: |
+        1. Open ...
+        2. Run :Conan ...
+        3. Select ...
+    validations:
+      required: true
+
+  - type: input
+    id: nvim_version
+    attributes:
+      label: Neovim version
+      placeholder: v0.12.0
+    validations:
+      required: true
+
+  - type: input
+    id: conan_version
+    attributes:
+      label: Conan version
+      placeholder: Conan version 2.x.y
+    validations:
+      required: true
+
+  - type: input
+    id: plugin_version
+    attributes:
+      label: nvim-conan version or commit
+      placeholder: 4.1.0 or a commit hash
+    validations:
+      required: true
+
+  - type: input
+    id: system
+    attributes:
+      label: System
+      placeholder: macOS 26 arm64, Arch Linux x86_64, ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: config
+    attributes:
+      label: Relevant config
+      description: Only the part that matters. Again, no secrets please.
+      render: json
+
+  - type: textarea
+    id: output
+    attributes:
+      label: Logs or command output
+      description: Output from the failed terminal or `:checkhealth conan` is especially useful.
+      render: text
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Quick sanity check
+      options:
+        - label: I checked that this is not already reported.
+          required: true
