@@ -75,6 +75,9 @@ The automatic first-time configuration leaves Conan's optional `build_policy` un
 A missing, empty, or blank value omits `--build`; otherwise, `install`, `build`, and `create`
 include `--build=<value>`.
 
+All Conan terminal buffers are listed so they remain visible to buffer navigation and selectors
+such as CodeCompanion's `#buffer`. `:Conan build` additionally uses the stable name `conan-build`.
+
 List-valued Conan configuration can be written as a JSON array without escaping its quotes:
 
 ```json

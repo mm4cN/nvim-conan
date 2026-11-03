@@ -133,7 +133,7 @@ function M.open_floating_terminal(argv, title, close_term, opts)
     local win = vim.api.nvim_get_current_win()
     vim.api.nvim_win_set_width(win, width)
 
-    local buf = vim.api.nvim_create_buf(false, true)
+    local buf = vim.api.nvim_create_buf(true, true)
     vim.api.nvim_win_set_buf(win, buf)
 
     vim.bo[buf].bufhidden = "wipe"
@@ -173,6 +173,14 @@ function M.open_floating_terminal(argv, title, close_term, opts)
       end)
     end,
   })
+
+  if type(opts.buffer_name) == "string" and opts.buffer_name ~= "" then
+    local previous = vim.fn.bufnr(opts.buffer_name)
+    if previous ~= -1 and previous ~= buf and vim.api.nvim_buf_is_valid(previous) then
+      vim.api.nvim_buf_set_name(previous, opts.buffer_name .. ":" .. previous)
+    end
+    vim.api.nvim_buf_set_name(buf, opts.buffer_name)
+  end
 
   vim.cmd("startinsert")
 end

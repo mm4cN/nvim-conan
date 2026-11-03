@@ -60,12 +60,17 @@ The main entry point is: >
 
 Available subcommands:
 
+Terminal buffers opened by Conan commands are listed and can be selected by
+buffer navigation tools. The buffers are wiped when their successful command
+closes the terminal window.
+
 `install`
     Run `conan install` using values from |nvim-conan-config-file|.
 
 `build`
     Run `conan build`. If a new `compile_commands.json` is produced, the plugin
-    links the newest one into the project root.
+    links the newest one into the project root. Its terminal buffer is named
+    `conan-build`.
 
 `lock`
     Run `conan lock create` for the configured recipe.

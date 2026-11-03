@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - List-valued `conf` entries in `conan-config.json` can be written as JSON arrays and entered as
   double- or single-quoted lists during reconfiguration; the command builder serializes them into
   single literal Conan arguments.
+- Conan terminal buffers are listed for buffer selectors, and `:Conan build` uses the stable name
+  `conan-build`.
 
 ## [4.1.0] - 2026-11-03
 

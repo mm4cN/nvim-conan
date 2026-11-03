@@ -61,16 +61,19 @@ end
 ---@param argv string[] Command and arguments executed in the floating terminal.
 ---@param title string Floating window title.
 ---@param close_term boolean If true, closes terminal window automatically on exit code 0.
-local function run_terminal_with_status(text, argv, title, close_term, on_exit)
+---@param opts? {on_exit?: fun(code: integer), buffer_name?: string}
+local function run_terminal_with_status(text, argv, title, close_term, opts)
   local utils = require("utils")
+  opts = opts or {}
   conan_status.start(text)
 
   utils.open_floating_terminal(argv, title, close_term, {
+    buffer_name = opts.buffer_name,
     on_exit = function(code)
       conan_status.stop()
 
-      if type(on_exit) == "function" then
-        pcall(on_exit, code)
+      if type(opts.on_exit) == "function" then
+        pcall(opts.on_exit, code)
       end
 
       if code ~= 0 then
@@ -117,16 +120,19 @@ function M.build()
   end
 
   local argv = command_builder.build(config, resolve_lockfile(config))
-  run_terminal_with_status("🔨 Conan: build", argv, "🔨 Conan Build", true, function(code)
-    if code ~= 0 then
-      return
-    end
+  run_terminal_with_status("🔨 Conan: build", argv, "🔨 Conan Build", true, {
+    buffer_name = "conan-build",
+    on_exit = function(code)
+      if code ~= 0 then
+        return
+      end
 
-    local cc = require("utils").find_latest_compile_commands()
-    if cc then
-      require("utils").link_compile_commands(cc)
-    end
-  end)
+      local cc = require("utils").find_latest_compile_commands()
+      if cc then
+        require("utils").link_compile_commands(cc)
+      end
+    end,
+  })
 end
 
 --- Runs `conan lock create` using config file.
@@ -169,11 +175,13 @@ function M.sbom(args)
 
   local argv = command_builder.sbom(config, resolve_lockfile(config), format, output_folder)
   local output_file = output_folder .. "/sbom-cyclonedx-" .. format .. ".json"
-  run_terminal_with_status("📋 Conan: SBOM", argv, "📋 Conan SBOM", true, function(code)
-    if code == 0 then
-      vim.notify("Generated SBOM: " .. output_file, vim.log.levels.INFO)
-    end
-  end)
+  run_terminal_with_status("📋 Conan: SBOM", argv, "📋 Conan SBOM", true, {
+    on_exit = function(code)
+      if code == 0 then
+        vim.notify("Generated SBOM: " .. output_file, vim.log.levels.INFO)
+      end
+    end,
+  })
 end
 
 --- Runs `conan create` using config file.
