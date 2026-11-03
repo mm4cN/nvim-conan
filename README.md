@@ -165,7 +165,7 @@ Lua: 5.1+ (included with Neovim)
 
 Conan: 2.x — installed manually and available on your PATH
 
-[Telescope.nvim](https://github.com/nvim-telescope/telescope.nvim): Required for interactive remote/ref pickers (used by upload)
+[Telescope.nvim](https://github.com/nvim-telescope/telescope.nvim): Required for search, upload, and interactive configuration pickers
 
 Run `:checkhealth conan` to verify the required components are available.
 
