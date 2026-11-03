@@ -1,6 +1,6 @@
 # Contributing to nvim-conan
 
-Welcome, curious hacker — thank you for considering a contribution.  
+Welcome, curious hacker — thank you for considering a contribution.
 This project is built with love and Lua, and contributions are deeply appreciated.
 
 Whether you're fixing a bug, adding a feature, improving documentation, or just asking good questions — you're helping.
@@ -16,10 +16,10 @@ git clone https://github.com/mm4cN/nvim-conan
 cd nvim-conan
 ```
 
-
 ### 2. Link the Plugin Locally
 
 If you're using [lazy.nvim](https://github.com/folke/lazy.nvim), point to your local copy:
+
 ```lua
 {
   dir = "~/path/to/nvim-conan",
@@ -36,7 +36,6 @@ Before contributing, make sure the following tools are installed:
 - Neovim 0.12+
 - Conan 2.x – Installed manually and available on your PATH
 - [Telescope.nvim](https://github.com/nvim-telescope/telescope.nvim): Required for interactive pickers
-- A working Python 3 provider for Neovim (check with :checkhealth)
 - A basic C/C++ toolchain for testing Conan builds locally
 - [StyLua](https://github.com/JohnnyMorganz/StyLua) for formatting checks
 
@@ -48,6 +47,7 @@ You can install Telescope like so:
   dependencies = { "nvim-lua/plenary.nvim" },
 }
 ```
+
 -----
 
 ## 🧪 Testing
@@ -74,21 +74,29 @@ make format
 
 To test plugin behavior:
 
-Open a project with a conanfile.py
-Run :Conan <subcommand> to test commands like:
-install, build, lock, search, create, export, upload
-You can use a test config:
+1. Open a project containing `conanfile.py` or `conanfile.txt`.
+2. Run `:Conan <subcommand>` and exercise the relevant workflow.
+3. For changes touching command execution, inspect the generated terminal command before pushing.
+
+Available workflows include `install`, `build`, `lock`, `sbom`, `search`, `create`, `export`,
+`export_package`, `upload`, and `reconfigure`.
+
+You can use a minimal test config:
 
 ```json
 {
+  "recipe": ".",
   "profile_host": "default",
-  "profile_build": "default"
+  "profile_build": "default",
+  "options": {},
+  "conf": {}
 }
 ```
 
 `build_policy` is optional. To exercise an explicitly configured policy, add any Conan-supported
 value, such as `"build_policy": "missing:zlib/*"`; the plugin passes it as
 `--build=missing:zlib/*`.
+
 -------
 
 ## ✨ Suggestions Welcome
@@ -96,8 +104,3 @@ value, such as `"build_policy": "missing:zlib/*"`; the plugin passes it as
 If you're unsure where to start, feel free to open an issue and ask — small improvements are just as valuable as big features.
 
 Thanks again for contributing 💚
-
-
----
-
-Let me know if you'd like to add a **`Makefile` or setup script** for common dev tasks, or a `:Conan debug` mode that outputs internal state.
